@@ -86,7 +86,10 @@
                     this.contentId = resp.data.content_id;
                     this.pollStatus();
                 },
-                error: () => this.showError(I18N.error)
+                error: (xhr, status, error) => {
+                    const detail = error ? `${status}: ${error}` : `HTTP ${xhr.status}`;
+                    this.showError(`Verbindungsfehler beim Starten der Generierung (${detail}). Bitte Seite neu laden und erneut versuchen.`);
+                }
             });
         },
 
@@ -103,7 +106,11 @@
                 url:  AJAX_URL,
                 data: { action: 'aica_get_job_status', nonce: NONCE, content_id: this.contentId },
                 success: (resp) => {
-                    if (!resp.success) return;
+                    if (!resp.success) {
+                        clearInterval(this.pollInterval);
+                        this.showError(resp.data?.message || 'Status-Abfrage fehlgeschlagen.');
+                        return;
+                    }
                     const d = resp.data;
                     this.updateLogs(d.logs || []);
                     this.updatePipelineStatus(d.logs || []);
@@ -113,8 +120,14 @@
                         this.showResult(d);
                     } else if (d.status === 'error') {
                         clearInterval(this.pollInterval);
-                        this.showError(d.error_message || I18N.error);
+                        const msg = d.error_message || 'Unbekannter Fehler. Details siehe Agent-Log oben.';
+                        this.showError(msg);
                     }
+                },
+                error: (xhr, status, error) => {
+                    clearInterval(this.pollInterval);
+                    const detail = error ? `${status}: ${error}` : `HTTP ${xhr.status}`;
+                    this.showError(`Status-Abfrage fehlgeschlagen (${detail}). Generierung läuft möglicherweise noch im Hintergrund.`);
                 }
             });
         },

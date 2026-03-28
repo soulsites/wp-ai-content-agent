@@ -130,7 +130,8 @@ class Orchestrator {
             $content_result = $writer_agent->run( $context );
 
             if ( is_wp_error( $content_result ) ) {
-                throw new \RuntimeException( $content_result->get_error_message() );
+                $writer_error = $content_result->get_error_message() ?: 'Unbekannter Fehler beim Schreiben des Artikels';
+                throw new \RuntimeException( 'Content-Writer: ' . $writer_error );
             }
 
             $this->total_tokens += $writer_agent->get_total_tokens();
@@ -170,6 +171,12 @@ class Orchestrator {
 
             $duration = round( microtime( true ) - $start_time, 2 );
 
+            if ( is_wp_error( $post_id ) ) {
+                $this->log( $content_id, 'system', 'warning',
+                    'WordPress-Post konnte nicht erstellt werden: ' . $post_id->get_error_message()
+                );
+            }
+
             $wpdb->update(
                 $table,
                 [
@@ -192,8 +199,14 @@ class Orchestrator {
             }
 
         } catch ( \Throwable $e ) {
-            $this->update_status( $content_id, 'error', $e->getMessage() );
-            $this->log( $content_id, 'system', 'error', 'Fehler: ' . $e->getMessage() );
+            $error_class = get_class( $e );
+            $error_msg   = $e->getMessage();
+            if ( empty( $error_msg ) ) {
+                $error_msg = 'Unbekannter Fehler (' . $error_class . ')';
+            }
+            $full_error = sprintf( '%s [%s in %s Zeile %d]', $error_msg, $error_class, basename( $e->getFile() ), $e->getLine() );
+            $this->update_status( $content_id, 'error', $full_error );
+            $this->log( $content_id, 'system', 'error', 'Kritischer Fehler: ' . $full_error );
         }
     }
 
