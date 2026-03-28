@@ -21,6 +21,8 @@ class Plugin {
 
     public function init(): void {
         $this->load_dependencies();
+        require_once AICA_PLUGIN_DIR . 'includes/class-installer.php';
+        Installer::maybe_upgrade();
         $this->init_hooks();
     }
 
