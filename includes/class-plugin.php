@@ -89,8 +89,26 @@ class Plugin {
             wp_send_json_error( [ 'message' => $content_id->get_error_message() ] );
         }
 
-        // Sofort im Background starten
+        // Stray PHP-Output (Notices, Warnings, Debug-HTML) abfangen,
+        // damit die AJAX-Antwort kein ungültiges JSON enthält.
+        ob_start();
         $orchestrator->run_async( $content_id );
+        $stray_output = ob_get_clean();
+
+        // Stray-Output als Log-Eintrag speichern, falls vorhanden (hilft beim Debuggen)
+        if ( ! empty( trim( $stray_output ) ) ) {
+            global $wpdb;
+            $wpdb->insert(
+                $wpdb->prefix . 'aica_logs',
+                [
+                    'content_id' => $content_id,
+                    'agent'      => 'system',
+                    'level'      => 'warning',
+                    'message'    => 'Ungeplante PHP-Ausgabe während der Generierung: ' . wp_strip_all_tags( substr( $stray_output, 0, 500 ) ),
+                ],
+                [ '%d', '%s', '%s', '%s' ]
+            );
+        }
 
         wp_send_json_success( [
             'content_id' => $content_id,

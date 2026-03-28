@@ -3,7 +3,7 @@
  * Plugin Name:       WP AI Content Agent
  * Plugin URI:        https://github.com/soulsites/wp-ai-content-agent
  * Description:       Generiert hochwertigen SEO-Content mit einer Multi-Agenten-Architektur auf Basis der Claude API von Anthropic.
- * Version:           1.0.0
+ * Version:           1.0.1
  * Requires at least: 6.0
  * Requires PHP:      8.0
  * Author:            Soulsites
@@ -14,7 +14,7 @@
 defined( 'ABSPATH' ) || exit;
 
 // Plugin-Konstanten
-define( 'AICA_VERSION', '1.0.0' );
+define( 'AICA_VERSION', '1.0.1' );
 define( 'AICA_PLUGIN_FILE', __FILE__ );
 define( 'AICA_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AICA_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
