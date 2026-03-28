@@ -1,0 +1,286 @@
+/* ============================================================
+   WP AI Content Agent — Admin Styles
+   ============================================================ */
+
+:root {
+    --aica-primary:    #6C5CE7;
+    --aica-primary-dk: #5a4bd1;
+    --aica-secondary:  #00B894;
+    --aica-danger:     #d63638;
+    --aica-warning:    #dba617;
+    --aica-bg:         #f6f7f7;
+    --aica-card-bg:    #ffffff;
+    --aica-border:     #dcdcde;
+    --aica-text:       #1d2327;
+    --aica-text-muted: #646970;
+    --aica-radius:     8px;
+    --aica-shadow:     0 1px 4px rgba(0,0,0,.08);
+    --aica-shadow-md:  0 4px 16px rgba(0,0,0,.12);
+}
+
+/* ---- Wrap & Header ---- */
+.aica-wrap { max-width: 1400px; }
+.aica-header { margin-bottom: 24px; }
+.aica-header h1 { display: flex; align-items: center; gap: 10px; font-size: 28px; color: var(--aica-text); margin-bottom: 4px; }
+.aica-logo { font-size: 32px; }
+.aica-header-sub { color: var(--aica-text-muted); margin-top: 0; font-size: 14px; }
+.aica-notice { border-left-color: var(--aica-warning) !important; }
+
+/* ---- Cards ---- */
+.aica-card {
+    background: var(--aica-card-bg);
+    border: 1px solid var(--aica-border);
+    border-radius: var(--aica-radius);
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    box-shadow: var(--aica-shadow);
+}
+.aica-card-title { font-size: 16px; font-weight: 600; margin-top: 0; margin-bottom: 16px; color: var(--aica-text); }
+.aica-card-danger { border-color: var(--aica-danger); }
+
+/* ---- Stats Grid ---- */
+.aica-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+.aica-stat-card {
+    background: var(--aica-card-bg);
+    border: 1px solid var(--aica-border);
+    border-radius: var(--aica-radius);
+    padding: 20px;
+    text-align: center;
+    box-shadow: var(--aica-shadow);
+    transition: transform .15s, box-shadow .15s;
+}
+.aica-stat-card:hover { transform: translateY(-2px); box-shadow: var(--aica-shadow-md); }
+.aica-stat-card.aica-stat-active { border-color: var(--aica-primary); background: #f9f8ff; }
+.aica-stat-icon { font-size: 28px; margin-bottom: 8px; }
+.aica-stat-value { font-size: 28px; font-weight: 700; color: var(--aica-primary); line-height: 1.2; }
+.aica-stat-label { font-size: 12px; color: var(--aica-text-muted); margin-top: 4px; }
+
+/* ---- Dashboard Grid ---- */
+.aica-dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 900px) { .aica-dashboard-grid { grid-template-columns: 1fr; } }
+
+/* ---- Pipeline ---- */
+.aica-pipeline { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.aica-pipeline-step {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    background: #f8f7ff; border: 1px solid #d8d4f8; border-radius: var(--aica-radius);
+    padding: 12px 16px; font-size: 12px; min-width: 80px; text-align: center;
+}
+.aica-pipeline-icon { font-size: 22px; }
+.aica-pipeline-arrow { font-size: 20px; color: var(--aica-text-muted); }
+.aica-agent-pipeline h3 { font-size: 14px; margin-bottom: 8px; color: var(--aica-text-muted); font-weight: 500; }
+
+/* ---- Quick Actions ---- */
+.aica-quick-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+
+/* ---- Buttons ---- */
+.aica-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500;
+    border: 1px solid transparent; cursor: pointer; text-decoration: none;
+    transition: all .15s; white-space: nowrap; line-height: 1.4;
+}
+.aica-btn-primary    { background: var(--aica-primary); color: #fff; border-color: var(--aica-primary); }
+.aica-btn-primary:hover { background: var(--aica-primary-dk); border-color: var(--aica-primary-dk); color: #fff; }
+.aica-btn-secondary  { background: #fff; color: var(--aica-text); border-color: var(--aica-border); }
+.aica-btn-secondary:hover { border-color: #aaa; color: var(--aica-text); }
+.aica-btn-danger     { background: var(--aica-danger); color: #fff; border-color: var(--aica-danger); }
+.aica-btn-danger:hover { background: #b02a2c; border-color: #b02a2c; color: #fff; }
+.aica-btn-large      { padding: 12px 24px; font-size: 15px; }
+.aica-btn-small      { padding: 4px 10px; font-size: 12px; }
+.aica-btn:disabled   { opacity: .5; cursor: not-allowed; }
+
+/* ---- Forms ---- */
+.aica-form-group { margin-bottom: 18px; }
+.aica-label { display: block; font-weight: 600; margin-bottom: 6px; color: var(--aica-text); }
+.aica-hint { font-weight: 400; color: var(--aica-text-muted); font-size: 12px; margin-left: 6px; }
+.aica-input, .aica-select, .aica-textarea-mono {
+    border: 1px solid var(--aica-border); border-radius: 6px;
+    padding: 8px 12px; font-size: 13px; color: var(--aica-text);
+    transition: border-color .15s;
+}
+.aica-input:focus, .aica-select:focus { border-color: var(--aica-primary); outline: none; box-shadow: 0 0 0 2px rgba(108,92,231,.15); }
+.aica-textarea-mono { font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.6; }
+.aica-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.aica-form-half { }
+.aica-form-third { }
+.aica-form-actions { margin-top: 24px; display: flex; gap: 12px; align-items: center; }
+.aica-api-key-field { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.aica-api-test-result { margin-top: 8px; font-size: 13px; }
+.aica-api-test-result.success { color: var(--aica-secondary); }
+.aica-api-test-result.error   { color: var(--aica-danger); }
+
+/* ---- Tables ---- */
+.aica-table { border-collapse: collapse; width: 100%; }
+.aica-table-full { min-width: 600px; overflow-x: auto; }
+.aica-table th { background: #f8f9fa; padding: 10px 12px; text-align: left; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; border-bottom: 2px solid var(--aica-border); }
+.aica-table td { padding: 10px 12px; border-bottom: 1px solid var(--aica-border); vertical-align: middle; font-size: 13px; }
+.aica-table tr:hover td { background: #f9f8ff; }
+.aica-table-actions { display: flex; gap: 4px; }
+
+/* ---- Status Badges ---- */
+.aica-status { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+.aica-status-pending    { background: #fff3cd; color: #856404; }
+.aica-status-processing { background: #cff4fc; color: #0c5460; }
+.aica-status-completed  { background: #d1e7dd; color: #155724; }
+.aica-status-error      { background: #f8d7da; color: #721c24; }
+.aica-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; background: #e9ecef; color: var(--aica-text-muted); }
+.aica-badge-schedule { background: #e8f4fd; color: #0c5460; }
+
+/* ---- SEO Score ---- */
+.aica-seo-score { font-weight: 700; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+.aica-seo-good   { background: #d1e7dd; color: #155724; }
+.aica-seo-medium { background: #fff3cd; color: #856404; }
+.aica-seo-poor   { background: #f8d7da; color: #721c24; }
+
+/* ---- Filter Bar ---- */
+.aica-filter-bar { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-bottom: 16px; background: var(--aica-card-bg); border: 1px solid var(--aica-border); border-radius: var(--aica-radius); padding: 8px 12px; }
+.aica-filter-link { padding: 4px 12px; border-radius: 4px; font-size: 13px; text-decoration: none; color: var(--aica-text-muted); }
+.aica-filter-link:hover, .aica-filter-link.active { background: var(--aica-primary); color: #fff; }
+
+/* ---- Toolbar ---- */
+.aica-toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; }
+
+/* ---- Empty State ---- */
+.aica-empty, .aica-empty-state { text-align: center; color: var(--aica-text-muted); padding: 40px 20px; }
+.aica-empty-state { border: 2px dashed var(--aica-border); border-radius: var(--aica-radius); }
+
+/* ---- Generate Page ---- */
+.aica-generate-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+@media (max-width: 900px) { .aica-generate-grid { grid-template-columns: 1fr; } }
+
+/* ---- Pipeline Status ---- */
+.aica-pipeline-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; border: 1px solid var(--aica-border);
+    border-radius: 6px; margin-bottom: 8px; background: #fafafa;
+    transition: all .2s;
+}
+.aica-pipeline-item.active  { background: #f0f8ff; border-color: var(--aica-primary); }
+.aica-pipeline-item.done    { background: #f0fff4; border-color: var(--aica-secondary); }
+.aica-pipeline-item.error   { background: #fff5f5; border-color: var(--aica-danger); }
+.aica-pipeline-item-icon    { font-size: 18px; min-width: 24px; }
+.aica-pipeline-item-label   { flex: 1; font-weight: 500; font-size: 13px; }
+.aica-pipeline-item-status  { font-size: 12px; color: var(--aica-text-muted); }
+
+/* ---- Logs ---- */
+.aica-logs { margin-top: 16px; }
+.aica-logs h3 { font-size: 13px; color: var(--aica-text-muted); margin-bottom: 8px; }
+#aica-log-entries { max-height: 200px; overflow-y: auto; font-size: 12px; font-family: monospace; background: #1d2327; color: #ccd6f6; border-radius: 6px; padding: 12px; }
+.aica-log-entry { margin-bottom: 4px; line-height: 1.5; }
+.aica-log-entry.info    { color: #a8d8ea; }
+.aica-log-entry.warning { color: #ffd6a5; }
+.aica-log-entry.error   { color: #ffadad; }
+
+/* ---- Loading ---- */
+.aica-spinner {
+    display: inline-block; width: 16px; height: 16px;
+    border: 2px solid rgba(108,92,231,.2); border-top-color: var(--aica-primary);
+    border-radius: 50%; animation: aica-spin .6s linear infinite;
+}
+@keyframes aica-spin { to { transform: rotate(360deg); } }
+.aica-loading { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--aica-text-muted); }
+.aica-loading-spinner { text-align: center; padding: 40px; color: var(--aica-text-muted); }
+
+/* ---- Result & Error ---- */
+.aica-result { padding: 16px; background: #f0fff4; border: 1px solid #b7e4c7; border-radius: 6px; margin-top: 16px; }
+.aica-result-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.aica-result-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0; }
+.aica-result-stat { text-align: center; background: #fff; border-radius: 6px; padding: 8px; }
+.aica-result-stat-value { font-size: 20px; font-weight: 700; color: var(--aica-primary); }
+.aica-result-stat-label { font-size: 11px; color: var(--aica-text-muted); }
+.aica-error { padding: 16px; background: #fff5f5; border: 1px solid #ffb3b3; border-radius: 6px; margin-top: 16px; }
+
+/* ---- Voice Preview ---- */
+.aica-voice-preview {
+    margin-top: 8px; padding: 12px; background: #f9f8ff;
+    border: 1px solid #d8d4f8; border-radius: 6px; font-size: 12px;
+}
+.aica-voice-preview-name { font-weight: 700; margin-bottom: 4px; }
+.aica-voice-preview-tone { color: var(--aica-text-muted); margin-bottom: 8px; }
+.aica-voice-preview-example { font-style: italic; color: var(--aica-text); border-left: 3px solid var(--aica-primary); padding-left: 8px; }
+
+/* ---- Voices Grid ---- */
+.aica-voices-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.aica-voice-card { background: var(--aica-card-bg); border: 1px solid var(--aica-border); border-radius: var(--aica-radius); padding: 16px; box-shadow: var(--aica-shadow); }
+.aica-voice-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px; }
+.aica-voice-card-header h3 { margin: 0; font-size: 15px; }
+.aica-voice-card-actions { display: flex; gap: 4px; }
+.aica-voice-desc { font-size: 13px; color: var(--aica-text-muted); margin-bottom: 8px; }
+.aica-voice-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.aica-voice-meta-item { background: #f0f0f0; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+.aica-voice-example { border-left: 3px solid var(--aica-primary); margin: 0; padding: 8px 12px; font-style: italic; font-size: 12px; color: var(--aica-text-muted); background: #f9f8ff; border-radius: 0 4px 4px 0; }
+.aica-voice-stats { font-size: 11px; color: var(--aica-text-muted); margin-top: 8px; }
+.aica-keywords { color: var(--aica-text-muted); }
+.aica-error-msg { color: var(--aica-danger); }
+
+/* ---- Pagination ---- */
+.aica-pagination { display: flex; gap: 4px; margin-top: 16px; flex-wrap: wrap; }
+.aica-page-link { padding: 6px 12px; border: 1px solid var(--aica-border); border-radius: 4px; font-size: 13px; text-decoration: none; color: var(--aica-text); }
+.aica-page-link.active, .aica-page-link:hover { background: var(--aica-primary); color: #fff; border-color: var(--aica-primary); }
+
+/* ---- Tabs ---- */
+.aica-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 16px; border-bottom: 2px solid var(--aica-border); padding-bottom: 0; }
+.aica-tab {
+    padding: 10px 18px; border: 1px solid transparent; border-bottom: none;
+    border-radius: 6px 6px 0 0; font-size: 13px; cursor: pointer;
+    background: transparent; color: var(--aica-text-muted);
+    transition: all .15s; margin-bottom: -2px;
+}
+.aica-tab:hover { background: #f9f8ff; color: var(--aica-primary); }
+.aica-tab.active { background: var(--aica-card-bg); border-color: var(--aica-border); border-bottom-color: var(--aica-card-bg); color: var(--aica-primary); font-weight: 600; }
+.aica-tab-content { display: none; }
+.aica-tab-content.active { display: block; }
+
+/* ---- Agent Header ---- */
+.aica-agent-header { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--aica-border); }
+.aica-agent-icon { font-size: 36px; line-height: 1; }
+.aica-agent-header > div { flex: 1; }
+.aica-agent-header .aica-card-title { margin-bottom: 4px; }
+.aica-agent-desc { color: var(--aica-text-muted); font-size: 13px; margin: 0; }
+
+/* ---- Toggle ---- */
+.aica-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.aica-toggle input { display: none; }
+.aica-toggle-slider {
+    width: 40px; height: 22px; background: #ccc; border-radius: 11px;
+    position: relative; transition: background .2s; flex-shrink: 0;
+}
+.aica-toggle-slider::after {
+    content: ''; position: absolute; width: 18px; height: 18px;
+    background: #fff; border-radius: 50%; top: 2px; left: 2px;
+    transition: left .2s; box-shadow: 0 1px 3px rgba(0,0,0,.3);
+}
+.aica-toggle input:checked + .aica-toggle-slider { background: var(--aica-secondary); }
+.aica-toggle input:checked + .aica-toggle-slider::after { left: 20px; }
+.aica-toggle-label { font-size: 13px; font-weight: 500; }
+
+/* ---- Modal ---- */
+.aica-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 99999; display: flex; align-items: center; justify-content: center; }
+.aica-modal-backdrop { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,.5); }
+.aica-modal-content {
+    position: relative; background: #fff; border-radius: var(--aica-radius);
+    box-shadow: 0 20px 60px rgba(0,0,0,.3); width: 90%; max-width: 600px;
+    max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column;
+}
+.aica-modal-large  { max-width: 760px; }
+.aica-modal-xlarge { max-width: 980px; }
+.aica-modal-header { padding: 20px 24px 16px; border-bottom: 1px solid var(--aica-border); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: #fff; z-index: 1; }
+.aica-modal-header h2 { margin: 0; font-size: 18px; }
+.aica-modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--aica-text-muted); padding: 0; line-height: 1; }
+.aica-modal-close:hover { color: var(--aica-text); }
+.aica-modal-body { padding: 20px 24px; flex: 1; }
+.aica-modal-footer { padding: 16px 24px; border-top: 1px solid var(--aica-border); display: flex; gap: 8px; justify-content: flex-end; position: sticky; bottom: 0; background: #fff; }
+
+/* ---- Details Modal Content ---- */
+.aica-details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+.aica-details-section h3 { font-size: 14px; color: var(--aica-text-muted); margin-bottom: 8px; }
+.aica-details-section pre { white-space: pre-wrap; font-size: 12px; background: #f8f9fa; padding: 12px; border-radius: 6px; max-height: 300px; overflow-y: auto; border: 1px solid var(--aica-border); }
+
+/* ---- Admin Form Third ---- */
+.aica-form-row.three-col { grid-template-columns: 1fr 1fr 1fr; }
