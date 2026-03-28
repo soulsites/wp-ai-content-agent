@@ -89,26 +89,23 @@ class Plugin {
             wp_send_json_error( [ 'message' => $content_id->get_error_message() ] );
         }
 
-        // Stray PHP-Output (Notices, Warnings, Debug-HTML) abfangen,
-        // damit die AJAX-Antwort kein ungültiges JSON enthält.
-        ob_start();
-        $orchestrator->run_async( $content_id );
-        $stray_output = ob_get_clean();
-
-        // Stray-Output als Log-Eintrag speichern, falls vorhanden (hilft beim Debuggen)
-        if ( ! empty( trim( $stray_output ) ) ) {
-            global $wpdb;
-            $wpdb->insert(
-                $wpdb->prefix . 'aica_logs',
-                [
-                    'content_id' => $content_id,
-                    'agent'      => 'system',
-                    'level'      => 'warning',
-                    'message'    => 'Ungeplante PHP-Ausgabe während der Generierung: ' . wp_strip_all_tags( substr( $stray_output, 0, 500 ) ),
-                ],
-                [ '%d', '%s', '%s', '%s' ]
-            );
-        }
+        // Generierung erst NACH dem Senden der JSON-Antwort starten (via shutdown-Hook).
+        // Dadurch kann kein PHP-Output (Fatal Errors, Notices, Debug-HTML) die
+        // AJAX-Antwort korrumpieren – JSON ist bereits clean gesendet, bevor die
+        // eigentliche Generierung beginnt.
+        $cid  = $content_id;
+        $orch = $orchestrator;
+        add_action( 'shutdown', static function () use ( $cid, $orch ) {
+            // Verbindung zum Browser schließen; PHP-Prozess läuft im Hintergrund weiter.
+            if ( function_exists( 'fastcgi_finish_request' ) ) {
+                fastcgi_finish_request();
+            } elseif ( function_exists( 'litespeed_finish_request' ) ) {
+                litespeed_finish_request();
+            }
+            ignore_user_abort( true );
+            set_time_limit( 0 );
+            $orch->process_content( $cid );
+        } );
 
         wp_send_json_success( [
             'content_id' => $content_id,
