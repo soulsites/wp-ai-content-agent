@@ -12,7 +12,17 @@ class Installer {
     const TABLE_JOBS    = 'aica_jobs';
     const TABLE_CONTENT = 'aica_content';
     const TABLE_LOGS    = 'aica_logs';
-    const DB_VERSION    = '1.0.0';
+    const DB_VERSION    = '1.0.1';
+
+    /**
+     * Prüft ob das DB-Schema aktuell ist und führt ggf. ein Upgrade durch.
+     * Wird bei jedem Plugin-Laden aufgerufen (nur aktiv wenn Version veraltet).
+     */
+    public static function maybe_upgrade(): void {
+        if ( get_option( 'aica_db_version' ) !== self::DB_VERSION ) {
+            self::install();
+        }
+    }
 
     public static function install(): void {
         global $wpdb;
