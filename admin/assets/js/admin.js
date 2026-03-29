@@ -548,27 +548,35 @@
        Pipeline Builder
     ============================================================ */
     const PipelineBuilder = {
-        sortable:      null,
-        steps:         [],
-        agentInfo:     {},
+        sortable:  null,
+        steps:     [],
+        pipelines: [],
+
+        // Agenten-Map aus aicaData (key → info), wird in init() gebaut
+        agentMap:     {},
         sourceOptions: {},
-        pipelines:     [],
 
         init() {
-            const $builder = $('#aica-pipeline-builder');
-            if (!$builder.length) return;
+            // Agenten-Map aus globalen aicaData.agents aufbauen
+            (aicaData.agents || []).forEach(a => {
+                this.agentMap[a.key] = a;
+            });
 
-            // Daten aus DOM laden
+            // Source-Options dynamisch aus Agenten bauen
+            this.sourceOptions[''] = '— Quelle wählen —';
+            (aicaData.agents || []).forEach(a => {
+                if (a.result_key && a.result_key !== 'final_content') {
+                    this.sourceOptions[a.result_key] = a.name + ' (' + a.result_key + ')';
+                }
+            });
+
+            // Gespeicherte Pipelines aus DOM laden
             try {
-                const ai = document.getElementById('aica-agent-info-data');
-                if (ai) this.agentInfo = JSON.parse(ai.textContent);
-                const so = document.getElementById('aica-source-options-data');
-                if (so) this.sourceOptions = JSON.parse(so.textContent);
                 const pd = document.getElementById('aica-pipelines-data');
                 if (pd) this.pipelines = JSON.parse(pd.textContent);
             } catch(e) {}
 
-            // SortableJS initialisieren
+            // SortableJS auf Pipeline-Canvas (nur falls vorhanden)
             const canvas = document.getElementById('aica-pipeline-canvas');
             if (canvas && typeof Sortable !== 'undefined') {
                 this.sortable = Sortable.create(canvas, {
@@ -579,32 +587,21 @@
                 });
             }
 
-            // Events
-            $('#aica-new-pipeline-btn').on('click', () => this.openBuilder());
-            $('#aica-builder-close, #aica-builder-cancel').on('click', () => this.closeBuilder());
-            $('#aica-save-pipeline').on('click', () => this.savePipeline());
-            $(document).on('click', '.aica-palette-item', (e) => {
-                this.addStep($(e.currentTarget).data('agent'));
-            });
-            $(document).on('click', '.aica-edit-pipeline', (e) => {
-                this.editPipeline($(e.currentTarget).data('id'));
-            });
-            $(document).on('click', '.aica-delete-pipeline', (e) => {
-                this.deletePipeline($(e.currentTarget).data('id'));
-            });
-            $(document).on('click', '.aica-remove-step', (e) => {
-                this.removeStep($(e.currentTarget).closest('.aica-pipeline-step-item').data('step-id'));
-            });
-            $(document).on('click', '.aica-add-condition-btn', (e) => {
-                const stepId = $(e.currentTarget).closest('.aica-pipeline-step-item').data('step-id');
-                this.addCondition(stepId);
-            });
-            $(document).on('click', '.aica-remove-condition', (e) => {
-                $(e.currentTarget).closest('.aica-condition-row').remove();
-            });
+            // Alle Events via $(document).on() — unabhängig davon ob Elemente
+            // bereits im DOM sind oder erst später erscheinen.
+            $(document).on('click', '#aica-new-pipeline-btn',           () => this.openBuilder());
+            $(document).on('click', '#aica-builder-close',              () => this.closeBuilder());
+            $(document).on('click', '#aica-builder-cancel',             () => this.closeBuilder());
+            $(document).on('click', '#aica-save-pipeline',              () => this.savePipeline());
+            $(document).on('click', '.aica-palette-item',    (e) => this.addStep($(e.currentTarget).data('agent')));
+            $(document).on('click', '.aica-edit-pipeline',   (e) => this.editPipeline($(e.currentTarget).data('id')));
+            $(document).on('click', '.aica-delete-pipeline', (e) => this.deletePipeline($(e.currentTarget).data('id')));
+            $(document).on('click', '.aica-remove-step',     (e) => this.removeStep($(e.currentTarget).closest('.aica-pipeline-step-item').data('step-id')));
+            $(document).on('click', '.aica-add-condition-btn', (e) => this.addCondition($(e.currentTarget).closest('.aica-pipeline-step-item').data('step-id')));
+            $(document).on('click', '.aica-remove-condition',  (e) => $(e.currentTarget).closest('.aica-condition-row').remove());
             $(document).on('change', '.aica-step-enabled-toggle', (e) => {
-                const $item = $(e.currentTarget).closest('.aica-pipeline-step-item');
-                const enabled = $(e.currentTarget).prop('checked');
+                const $item    = $(e.currentTarget).closest('.aica-pipeline-step-item');
+                const enabled  = $(e.currentTarget).prop('checked');
                 $item.toggleClass('aica-step-disabled', !enabled);
             });
         },
@@ -645,7 +642,7 @@
         },
 
         addStep(agentKey) {
-            const info = this.agentInfo[agentKey];
+            const info = this.agentMap[agentKey];
             if (!info) return;
             const step = {
                 id:         'step_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
@@ -659,7 +656,7 @@
         },
 
         renderStep(step) {
-            const info    = this.agentInfo[step.agent] || { icon: '❓', name: step.agent };
+            const info    = this.agentMap[step.agent] || { icon: '❓', name: step.agent };
             const enabled = step.enabled !== false;
 
             let condHtml = '';
@@ -827,6 +824,129 @@
     };
 
     /* ============================================================
+       Agent Manager (Custom Agents CRUD)
+    ============================================================ */
+    const AgentManager = {
+        agents: [],
+
+        init() {
+            const rawData = document.getElementById('aica-custom-agents-data');
+            if (!rawData) return;
+            try { this.agents = JSON.parse(rawData.textContent); } catch(e) {}
+
+            $('#aica-add-agent-btn').on('click', () => this.openModal());
+            $(document).on('click', '.aica-edit-agent',   (e) => this.editAgent($(e.currentTarget).data('id')));
+            $(document).on('click', '.aica-delete-agent', (e) => this.deleteAgent($(e.currentTarget).data('id')));
+            $(document).on('click', '#aica-save-agent',   () => this.saveAgent());
+            $(document).on('click', '#aica-agent-modal .aica-modal-close, #aica-agent-modal .aica-modal-backdrop', () => this.closeModal());
+
+            // Capabilities: Web-Search toggle shows/hides URL body
+            $(document).on('change', '#aica-cap-web-search', function() {
+                $('#aica-cap-web-body').toggle($(this).prop('checked'));
+            });
+        },
+
+        openModal(agentId = null) {
+            const $form = $('#aica-agent-form');
+            if (!$form.length) return;
+
+            $form[0].reset();
+            $('#aica-agent-id').val(0);
+            $('#aica-agent-modal-title').text('Neuen Agenten erstellen');
+            $('#aica-cap-web-body').hide();
+
+            if (agentId) {
+                const agent = this.agents.find(a => a.id == agentId);
+                if (agent) {
+                    $('#aica-agent-id').val(agent.id);
+                    $('#aica-agent-modal-title').text('Agent bearbeiten: ' + agent.name);
+                    $('#aica-agent-name').val(agent.name);
+                    $('#aica-agent-icon').val(agent.icon);
+                    $('#aica-agent-key').val(agent.agent_key);
+                    $('#aica-agent-result-key').val(agent.result_key);
+                    $('#aica-agent-description').val(agent.description || '');
+                    $('#aica-agent-model').val(agent.model || 'claude-opus-4-6');
+                    $('#aica-agent-max-tokens').val(agent.max_tokens || 2000);
+                    $('#aica-agent-temperature').val(agent.temperature || 0.5);
+                    $('#aica-agent-system-prompt').val(agent.system_prompt || '');
+
+                    // Capabilities
+                    const caps = agent.capabilities || {};
+                    const webEnabled = caps.web_search && caps.web_search.enabled;
+                    $('#aica-cap-web-search').prop('checked', !!webEnabled);
+                    if (webEnabled) {
+                        $('#aica-cap-web-urls').val((caps.web_search.urls || []).join('\n'));
+                        $('#aica-cap-web-body').show();
+                    }
+                    $('#aica-cap-coding').prop('checked', !!caps.coding);
+                }
+            }
+
+            $('#aica-agent-modal').show();
+        },
+
+        closeModal() { $('#aica-agent-modal').hide(); },
+
+        editAgent(id) { this.openModal(id); },
+
+        deleteAgent(id) {
+            if (!confirm(I18N.confirm_del)) return;
+            $.ajax({
+                url: AJAX_URL, method: 'POST',
+                data: { action: 'aica_delete_agent', nonce: NONCE, agent_id: id },
+                success: (resp) => {
+                    if (resp.success) $(`#aica-agent-row-${id}`).fadeOut(400, function(){ $(this).remove(); });
+                    else alert(resp.data?.message || I18N.error);
+                }
+            });
+        },
+
+        saveAgent() {
+            const name = $('#aica-agent-name').val().trim();
+            const key  = $('#aica-agent-key').val().trim();
+            if (!name || !key) { alert('Name und Agent-Key sind Pflichtfelder.'); return; }
+
+            // Capabilities zusammenbauen
+            const caps = {};
+            if ($('#aica-cap-web-search').prop('checked')) {
+                const urlsRaw = $('#aica-cap-web-urls').val().trim();
+                const urls = urlsRaw ? urlsRaw.split('\n').map(u => u.trim()).filter(u => u) : [];
+                caps.web_search = { enabled: true, urls };
+            }
+            if ($('#aica-cap-coding').prop('checked')) {
+                caps.coding = true;
+            }
+
+            const $btn = $('#aica-save-agent').prop('disabled', true).text('💾 ' + I18N.saving);
+
+            $.ajax({
+                url:    AJAX_URL,
+                method: 'POST',
+                data: {
+                    action:         'aica_save_agent',
+                    nonce:           NONCE,
+                    agent_id:       $('#aica-agent-id').val(),
+                    name:            name,
+                    icon:           $('#aica-agent-icon').val() || '🤖',
+                    agent_key:       key,
+                    result_key:     $('#aica-agent-result-key').val().trim() || key + '_result',
+                    description:    $('#aica-agent-description').val(),
+                    model:          $('#aica-agent-model').val(),
+                    max_tokens:     $('#aica-agent-max-tokens').val(),
+                    temperature:    $('#aica-agent-temperature').val(),
+                    system_prompt:  $('#aica-agent-system-prompt').val(),
+                    capabilities:   JSON.stringify(caps),
+                },
+                success: (resp) => {
+                    if (resp.success) { location.reload(); }
+                    else alert(resp.data?.message || I18N.error);
+                },
+                complete: () => $btn.prop('disabled', false).text('💾 Speichern'),
+            });
+        },
+    };
+
+    /* ============================================================
        Reset Data
     ============================================================ */
     $('#aica-reset-data').on('click', function() {
@@ -846,6 +966,7 @@
         JobManager.init();
         ContentDetails.init();
         PipelineBuilder.init();
+        AgentManager.init();
 
         // Modal-Backdrop close
         $(document).on('click', '.aica-modal-backdrop', function() {

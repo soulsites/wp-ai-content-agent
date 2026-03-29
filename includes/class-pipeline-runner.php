@@ -90,8 +90,9 @@ class Pipeline_Runner {
             }
 
             // Alle anderen Agenten: non-fatal
-            $result_key = self::RESULT_KEYS[ $agent_key ] ?? null;
+            $result_key = $this->get_result_key( $agent_key );
             if ( ! $result_key ) {
+                $this->log( $content_id, $agent_key, 'warning', "Kein result_key für Agent '{$agent_key}' gefunden." );
                 continue;
             }
 
@@ -159,17 +160,49 @@ class Pipeline_Runner {
     }
 
     /**
+     * Gibt den Context-Key zurück, in den der Agent schreibt.
+     */
+    private function get_result_key( string $agent_key ): ?string {
+        if ( isset( self::RESULT_KEYS[ $agent_key ] ) ) {
+            return self::RESULT_KEYS[ $agent_key ];
+        }
+
+        // Custom Agent: result_key aus DB laden
+        global $wpdb;
+        $result_key = $wpdb->get_var( $wpdb->prepare(
+            "SELECT result_key FROM {$wpdb->prefix}aica_agents WHERE agent_key = %s",
+            $agent_key
+        ) );
+
+        return $result_key ?: null;
+    }
+
+    /**
      * Instanziiert einen Agenten anhand seines Keys.
+     * Prüft zuerst Built-in-Agenten, dann Custom-Agenten aus der DB.
      */
     private function create_agent( string $key ): ?Agents\Agent_Base {
+        // Built-in Agenten
         switch ( $key ) {
             case 'content_analyzer':   return new Agents\Content_Analyzer();
             case 'audience_analyzer':  return new Agents\Audience_Analyzer();
             case 'keyword_researcher': return new Agents\Keyword_Researcher();
             case 'researcher':         return new Agents\Researcher();
             case 'content_writer':     return new Agents\Content_Writer();
-            default:                   return null;
         }
+
+        // Custom Agenten aus DB
+        global $wpdb;
+        $row = $wpdb->get_row( $wpdb->prepare(
+            "SELECT * FROM {$wpdb->prefix}aica_agents WHERE agent_key = %s",
+            $key
+        ), ARRAY_A );
+
+        if ( $row ) {
+            return new Agents\Custom_Agent( $row );
+        }
+
+        return null;
     }
 
     private function log( int $content_id, string $agent, string $level, string $message ): void {

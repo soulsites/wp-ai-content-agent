@@ -80,8 +80,9 @@ class Admin {
             true
         );
 
-        // Alle gespeicherten Pipelines für Job-Modal und Pipeline-Seite
         global $wpdb;
+
+        // Alle gespeicherten Pipelines für Job-Modal und Pipeline-Seite
         $pipelines_raw = $wpdb->get_results(
             "SELECT id, name, description, steps FROM {$wpdb->prefix}aica_pipelines ORDER BY name ASC"
         ) ?: [];
@@ -94,11 +95,44 @@ class Admin {
             ];
         }, $pipelines_raw );
 
+        // Built-in Agenten (PHP-Klassen)
+        $builtin_agents = [
+            [ 'key' => 'content_analyzer',   'name' => 'Content-Analyst',    'icon' => '🔍', 'result_key' => 'analysis_result', 'is_builtin' => true ],
+            [ 'key' => 'audience_analyzer',  'name' => 'Zielgruppenanalyst', 'icon' => '👥', 'result_key' => 'audience_result', 'is_builtin' => true ],
+            [ 'key' => 'keyword_researcher', 'name' => 'Keyword-Rechercheur','icon' => '🔑', 'result_key' => 'keyword_result',  'is_builtin' => true ],
+            [ 'key' => 'researcher',         'name' => 'Tiefenrechercheur',  'icon' => '📚', 'result_key' => 'research_result', 'is_builtin' => true ],
+            [ 'key' => 'content_writer',     'name' => 'Content-Autor',      'icon' => '✍️', 'result_key' => 'final_content',   'is_builtin' => true ],
+        ];
+
+        // Custom Agenten aus DB
+        $custom_agents_raw = $wpdb->get_results(
+            "SELECT id, agent_key, name, icon, description, model, max_tokens, temperature, result_key, capabilities
+             FROM {$wpdb->prefix}aica_agents ORDER BY name ASC"
+        ) ?: [];
+        $custom_agents = array_map( function( $a ) {
+            $caps = json_decode( $a->capabilities ?? '{}', true ) ?: [];
+            return [
+                'id'           => (int) $a->id,
+                'key'          => $a->agent_key,
+                'name'         => $a->name,
+                'icon'         => $a->icon,
+                'description'  => $a->description ?? '',
+                'model'        => $a->model,
+                'max_tokens'   => (int) $a->max_tokens,
+                'temperature'  => (float) $a->temperature,
+                'result_key'   => $a->result_key,
+                'is_builtin'   => false,
+                'capabilities' => $caps,
+            ];
+        }, $custom_agents_raw );
+
         wp_localize_script( 'aica-admin', 'aicaData', [
             'nonce'     => wp_create_nonce( 'aica_nonce' ),
             'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
             'adminUrl'  => admin_url( 'admin.php' ),
             'pipelines' => $pipelines,
+            'agents'    => array_merge( $builtin_agents, array_values( $custom_agents ) ),
+            'models'    => \AICA\Settings::get_available_models(),
             'i18n'      => [
                 'generating'   => 'Generierung läuft...',
                 'done'         => 'Abgeschlossen!',

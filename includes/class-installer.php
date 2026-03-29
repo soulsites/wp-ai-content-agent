@@ -13,7 +13,8 @@ class Installer {
     const TABLE_CONTENT   = 'aica_content';
     const TABLE_LOGS      = 'aica_logs';
     const TABLE_PIPELINES = 'aica_pipelines';
-    const DB_VERSION      = '1.1.0';
+    const TABLE_AGENTS    = 'aica_agents';
+    const DB_VERSION      = '1.2.0';
 
     /**
      * Prüft ob das DB-Schema aktuell ist und führt ggf. ein Upgrade durch.
@@ -156,6 +157,26 @@ class Installer {
             created_at  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (id)
+        ) {$charset_collate};" );
+
+        // Tabelle: Custom Agents
+        $table_agents = $wpdb->prefix . self::TABLE_AGENTS;
+        dbDelta( "CREATE TABLE {$table_agents} (
+            id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            agent_key       VARCHAR(100)    NOT NULL,
+            name            VARCHAR(255)    NOT NULL,
+            icon            VARCHAR(50)     NOT NULL DEFAULT '🤖',
+            description     TEXT            DEFAULT NULL,
+            system_prompt   TEXT            DEFAULT NULL,
+            model           VARCHAR(100)    NOT NULL DEFAULT 'claude-opus-4-6',
+            max_tokens      INT UNSIGNED    NOT NULL DEFAULT 2000,
+            temperature     DECIMAL(3,2)    NOT NULL DEFAULT 0.50,
+            result_key      VARCHAR(100)    NOT NULL DEFAULT 'custom_result',
+            capabilities    LONGTEXT        DEFAULT NULL,
+            created_at      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at      DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY idx_agent_key (agent_key)
         ) {$charset_collate};" );
 
         // Tabelle: Agent-Logs

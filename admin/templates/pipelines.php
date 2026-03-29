@@ -6,21 +6,32 @@ $pipelines = $wpdb->get_results(
     "SELECT id, name, description, steps, created_at FROM {$wpdb->prefix}aica_pipelines ORDER BY name ASC"
 ) ?: [];
 
-$agent_info = [
-    'content_analyzer'   => [ 'icon' => '🔍', 'name' => 'Content-Analyst',      'result_key' => 'analysis_result' ],
-    'audience_analyzer'  => [ 'icon' => '👥', 'name' => 'Zielgruppenanalyst',    'result_key' => 'audience_result' ],
-    'keyword_researcher' => [ 'icon' => '🔑', 'name' => 'Keyword-Rechercheur',   'result_key' => 'keyword_result' ],
-    'researcher'         => [ 'icon' => '📚', 'name' => 'Tiefenrechercheur',     'result_key' => 'research_result' ],
-    'content_writer'     => [ 'icon' => '✍️', 'name' => 'Content-Autor',         'result_key' => 'final_content' ],
+// Alle verfügbaren Agenten (Built-in + Custom aus DB)
+$builtin_agents = [
+    [ 'key' => 'content_analyzer',   'name' => 'Content-Analyst',    'icon' => '🔍', 'result_key' => 'analysis_result' ],
+    [ 'key' => 'audience_analyzer',  'name' => 'Zielgruppenanalyst', 'icon' => '👥', 'result_key' => 'audience_result' ],
+    [ 'key' => 'keyword_researcher', 'name' => 'Keyword-Rechercheur','icon' => '🔑', 'result_key' => 'keyword_result' ],
+    [ 'key' => 'researcher',         'name' => 'Tiefenrechercheur',  'icon' => '📚', 'result_key' => 'research_result' ],
+    [ 'key' => 'content_writer',     'name' => 'Content-Autor',      'icon' => '✍️', 'result_key' => 'final_content' ],
 ];
+$custom_db_agents = $wpdb->get_results(
+    "SELECT agent_key AS `key`, name, icon, result_key FROM {$wpdb->prefix}aica_agents ORDER BY name ASC"
+) ?: [];
+$all_agents = array_merge( $builtin_agents, array_map( 'get_object_vars', $custom_db_agents ) );
 
-$source_options = [
-    ''                => '— Quelle wählen —',
-    'analysis_result' => 'Content-Analyse',
-    'audience_result' => 'Zielgruppenanalyse',
-    'keyword_result'  => 'Keyword-Recherche',
-    'research_result' => 'Recherche',
-];
+// Agent-Info-Map für die Schritt-Vorschau (key → info)
+$agent_info = [];
+foreach ( $all_agents as $a ) {
+    $agent_info[ $a['key'] ] = $a;
+}
+
+// Source-Options für Bedingungen (aus allen Agenten dynamisch)
+$source_options = [ '' => '— Quelle wählen —' ];
+foreach ( $all_agents as $a ) {
+    if ( ! empty( $a['result_key'] ) && $a['result_key'] !== 'final_content' ) {
+        $source_options[ $a['result_key'] ] = $a['name'] . ' (' . $a['result_key'] . ')';
+    }
+}
 ?>
 <div class="wrap aica-wrap">
     <div class="aica-header">
@@ -129,10 +140,10 @@ $source_options = [
                 <p style="font-size:12px;color:var(--aica-text-muted);margin-bottom:16px;">
                     Klicke auf einen Agenten, um ihn zur Pipeline hinzuzufügen.
                 </p>
-                <?php foreach ( $agent_info as $key => $info ) : ?>
-                <div class="aica-palette-item" data-agent="<?php echo esc_attr( $key ); ?>">
-                    <span class="aica-palette-icon"><?php echo esc_html( $info['icon'] ); ?></span>
-                    <span class="aica-palette-name"><?php echo esc_html( $info['name'] ); ?></span>
+                <?php foreach ( $all_agents as $agent ) : ?>
+                <div class="aica-palette-item" data-agent="<?php echo esc_attr( $agent['key'] ); ?>">
+                    <span class="aica-palette-icon"><?php echo esc_html( $agent['icon'] ); ?></span>
+                    <span class="aica-palette-name"><?php echo esc_html( $agent['name'] ); ?></span>
                     <span class="aica-palette-add">＋</span>
                 </div>
                 <?php endforeach; ?>
