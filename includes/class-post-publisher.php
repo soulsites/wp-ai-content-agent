@@ -22,6 +22,10 @@ class Post_Publisher {
         $post_status = $context['post_status'] ?? 'draft';
         $category_id = (int) ( $context['category_id'] ?? 0 );
 
+        // Primär-Keyword extrahieren (erstes bei kommagetrennte Liste)
+        $keywords_raw    = $context['keywords'] ?? '';
+        $primary_keyword = trim( explode( ',', $keywords_raw )[0] );
+
         // Markdown zu HTML konvertieren (einfacher Konverter)
         $html_content = self::markdown_to_html( $content );
 
@@ -44,10 +48,26 @@ class Post_Publisher {
             $post_data['post_category'] = [ $category_id ];
         }
 
-        // Yoast/RankMath Meta-Description
+        // Yoast SEO Meta-Felder
         if ( $description ) {
             $post_data['meta_input']['_yoast_wpseo_metadesc'] = $description;
-            $post_data['meta_input']['rank_math_description']  = $description;
+        }
+        if ( $title ) {
+            $post_data['meta_input']['_yoast_wpseo_title'] = wp_strip_all_tags( $title );
+        }
+        if ( $primary_keyword ) {
+            $post_data['meta_input']['_yoast_wpseo_focuskw'] = $primary_keyword;
+        }
+
+        // RankMath Meta-Felder
+        if ( $description ) {
+            $post_data['meta_input']['rank_math_description'] = $description;
+        }
+        if ( $title ) {
+            $post_data['meta_input']['rank_math_seo_title'] = wp_strip_all_tags( $title );
+        }
+        if ( $primary_keyword ) {
+            $post_data['meta_input']['rank_math_focus_keyword'] = $primary_keyword;
         }
 
         $post_id = wp_insert_post( $post_data, true );
