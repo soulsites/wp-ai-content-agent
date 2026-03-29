@@ -35,6 +35,7 @@ class Plugin {
         require_once AICA_PLUGIN_DIR . 'includes/agents/class-keyword-researcher.php';
         require_once AICA_PLUGIN_DIR . 'includes/agents/class-researcher.php';
         require_once AICA_PLUGIN_DIR . 'includes/agents/class-content-writer.php';
+        require_once AICA_PLUGIN_DIR . 'includes/agents/class-custom-agent.php';
         require_once AICA_PLUGIN_DIR . 'includes/class-orchestrator.php';
         require_once AICA_PLUGIN_DIR . 'includes/class-pipeline-runner.php';
         require_once AICA_PLUGIN_DIR . 'includes/class-cron-manager.php';
@@ -63,6 +64,8 @@ class Plugin {
         add_action( 'wp_ajax_aica_save_pipeline',    [ $this, 'ajax_save_pipeline' ] );
         add_action( 'wp_ajax_aica_delete_pipeline',  [ $this, 'ajax_delete_pipeline' ] );
         add_action( 'wp_ajax_aica_get_pipelines',    [ $this, 'ajax_get_pipelines' ] );
+        add_action( 'wp_ajax_aica_save_agent',       [ $this, 'ajax_save_agent' ] );
+        add_action( 'wp_ajax_aica_delete_agent',     [ $this, 'ajax_delete_agent' ] );
     }
 
     public function ajax_generate_content(): void {
@@ -457,5 +460,87 @@ class Plugin {
         }
 
         wp_send_json_success( [ 'content_id' => $content_id, 'message' => 'Job gestartet.' ] );
+    }
+
+    public function ajax_save_agent(): void {
+        check_ajax_referer( 'aica_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( [], 403 );
+        }
+
+        global $wpdb;
+        $table    = $wpdb->prefix . 'aica_agents';
+        $agent_id = absint( $_POST['agent_id'] ?? 0 );
+
+        $agent_key = sanitize_key( wp_unslash( $_POST['agent_key'] ?? '' ) );
+        if ( empty( $agent_key ) ) {
+            wp_send_json_error( [ 'message' => 'Bitte einen Agent-Key angeben.' ] );
+        }
+
+        // Prüfen ob agent_key schon vergeben ist (bei neuem Agenten)
+        if ( ! $agent_id ) {
+            $exists = $wpdb->get_var( $wpdb->prepare(
+                "SELECT id FROM {$table} WHERE agent_key = %s",
+                $agent_key
+            ) );
+            if ( $exists ) {
+                wp_send_json_error( [ 'message' => "Agent-Key '{$agent_key}' ist bereits vergeben." ] );
+            }
+        }
+
+        // Capabilities sanitieren
+        $web_search_enabled = ! empty( $_POST['cap_web_search'] );
+        $web_urls_raw       = sanitize_textarea_field( wp_unslash( $_POST['cap_web_urls'] ?? '' ) );
+        $web_urls           = array_values( array_filter( array_map( 'trim', explode( "\n", $web_urls_raw ) ) ) );
+        $coding_enabled     = ! empty( $_POST['cap_coding'] );
+
+        $capabilities = wp_json_encode( [
+            'web_search' => [
+                'enabled' => $web_search_enabled,
+                'urls'    => $web_urls,
+            ],
+            'coding' => $coding_enabled,
+        ] );
+
+        $data = [
+            'name'          => sanitize_text_field( wp_unslash( $_POST['name'] ?? '' ) ),
+            'icon'          => sanitize_text_field( wp_unslash( $_POST['icon'] ?? '🤖' ) ),
+            'description'   => sanitize_textarea_field( wp_unslash( $_POST['description'] ?? '' ) ),
+            'system_prompt' => sanitize_textarea_field( wp_unslash( $_POST['system_prompt'] ?? '' ) ),
+            'model'         => sanitize_key( $_POST['model'] ?? 'claude-opus-4-6' ),
+            'max_tokens'    => min( 50000, max( 100, absint( $_POST['max_tokens'] ?? 2000 ) ) ),
+            'temperature'   => min( 1.0, max( 0.0, (float) ( $_POST['temperature'] ?? 0.5 ) ) ),
+            'result_key'    => sanitize_key( wp_unslash( $_POST['result_key'] ?? $agent_key . '_result' ) ),
+            'capabilities'  => $capabilities,
+        ];
+
+        if ( $agent_id ) {
+            $wpdb->update( $table, $data, [ 'id' => $agent_id ], null, [ '%d' ] );
+        } else {
+            $data['agent_key'] = $agent_key;
+            $wpdb->insert( $table, $data );
+            $agent_id = (int) $wpdb->insert_id;
+        }
+
+        wp_send_json_success( [ 'agent_id' => $agent_id ] );
+    }
+
+    public function ajax_delete_agent(): void {
+        check_ajax_referer( 'aica_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( [], 403 );
+        }
+
+        $agent_id = absint( $_POST['agent_id'] ?? 0 );
+        if ( ! $agent_id ) {
+            wp_send_json_error( [ 'message' => 'Keine Agent-ID.' ] );
+        }
+
+        global $wpdb;
+        $wpdb->delete( $wpdb->prefix . 'aica_agents', [ 'id' => $agent_id ], [ '%d' ] );
+
+        wp_send_json_success();
     }
 }

@@ -430,3 +430,90 @@ input:checked + .aica-step-toggle .aica-toggle-slider::before { transform: trans
     font-size: 11px !important;
     padding: 3px 8px !important;
 }
+
+/* ============================================================
+   Agent Capabilities Section
+============================================================ */
+.aica-capabilities-section {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--aica-border);
+}
+.aica-cap-section-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: var(--aica-text-muted);
+    margin-bottom: 12px;
+}
+.aica-cap-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+.aica-cap-card {
+    flex: 1 1 220px;
+    border: 1px solid var(--aica-border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+    transition: border-color .15s;
+}
+.aica-cap-card:has(input:checked) {
+    border-color: var(--aica-primary);
+    background: #f5f3ff;
+}
+.aica-cap-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    cursor: pointer;
+    user-select: none;
+}
+.aica-cap-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+}
+.aica-cap-info {
+    flex: 1;
+    min-width: 0;
+}
+.aica-cap-title {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--aica-text-primary);
+}
+.aica-cap-desc {
+    font-size: 11px;
+    color: var(--aica-text-muted);
+    margin-top: 2px;
+}
+.aica-cap-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 10px;
+    background: #e8e5ff;
+    color: var(--aica-primary);
+    white-space: nowrap;
+}
+.aica-cap-header input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+.aica-cap-body {
+    padding: 0 14px 14px;
+    border-top: 1px solid var(--aica-border);
+}
+.aica-cap-body textarea {
+    margin-top: 8px;
+}
+.aica-cap-body .description {
+    font-size: 11px;
+    color: var(--aica-text-muted);
+    margin: 6px 0 4px;
+}
