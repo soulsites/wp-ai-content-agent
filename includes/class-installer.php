@@ -12,7 +12,7 @@ class Installer {
     const TABLE_JOBS    = 'aica_jobs';
     const TABLE_CONTENT = 'aica_content';
     const TABLE_LOGS    = 'aica_logs';
-    const DB_VERSION    = '1.0.1';
+    const DB_VERSION    = '1.0.2';
 
     /**
      * Prüft ob das DB-Schema aktuell ist und führt ggf. ein Upgrade durch.
@@ -106,6 +106,8 @@ class Installer {
             topic           TEXT            NOT NULL,
             keywords        TEXT            DEFAULT NULL,
             voice_id        BIGINT UNSIGNED DEFAULT NULL,
+            post_status     VARCHAR(20)     NOT NULL DEFAULT 'draft',
+            category_id     BIGINT UNSIGNED DEFAULT NULL,
             status          VARCHAR(20)     NOT NULL DEFAULT 'pending',
             wp_post_id      BIGINT UNSIGNED DEFAULT NULL,
             analysis_result LONGTEXT        DEFAULT NULL,
