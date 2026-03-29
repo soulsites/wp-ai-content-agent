@@ -21,6 +21,50 @@ class Installer {
     public static function maybe_upgrade(): void {
         if ( get_option( 'aica_db_version' ) !== self::DB_VERSION ) {
             self::install();
+            self::add_missing_columns();
+        }
+    }
+
+    /**
+     * Fügt fehlende Spalten per ALTER TABLE direkt hinzu.
+     * Zuverlässiger als dbDelta() für bestehende Tabellen.
+     */
+    private static function add_missing_columns(): void {
+        global $wpdb;
+        $table = $wpdb->prefix . self::TABLE_CONTENT;
+
+        $existing = $wpdb->get_col(
+            $wpdb->prepare(
+                "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s",
+                $table
+            )
+        );
+
+        $to_add = [
+            'job_id'           => 'BIGINT UNSIGNED DEFAULT NULL',
+            'voice_id'         => 'BIGINT UNSIGNED DEFAULT NULL',
+            'post_status'      => "VARCHAR(20) NOT NULL DEFAULT 'draft'",
+            'category_id'      => 'BIGINT UNSIGNED DEFAULT NULL',
+            'wp_post_id'       => 'BIGINT UNSIGNED DEFAULT NULL',
+            'analysis_result'  => 'LONGTEXT DEFAULT NULL',
+            'audience_result'  => 'LONGTEXT DEFAULT NULL',
+            'keyword_result'   => 'LONGTEXT DEFAULT NULL',
+            'research_result'  => 'LONGTEXT DEFAULT NULL',
+            'final_content'    => 'LONGTEXT DEFAULT NULL',
+            'meta_title'       => 'VARCHAR(255) DEFAULT NULL',
+            'meta_description' => 'TEXT DEFAULT NULL',
+            'word_count'       => 'INT UNSIGNED DEFAULT NULL',
+            'seo_score'        => 'TINYINT UNSIGNED DEFAULT NULL',
+            'tokens_used'      => 'INT UNSIGNED DEFAULT NULL',
+            'duration_sec'     => 'FLOAT DEFAULT NULL',
+            'error_message'    => 'TEXT DEFAULT NULL',
+        ];
+
+        foreach ( $to_add as $column => $definition ) {
+            if ( ! in_array( $column, $existing, true ) ) {
+                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+                $wpdb->query( "ALTER TABLE `{$table}` ADD COLUMN `{$column}` {$definition}" );
+            }
         }
     }
 
