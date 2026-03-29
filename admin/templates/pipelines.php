@@ -1,0 +1,191 @@
+<?php
+defined( 'ABSPATH' ) || exit;
+
+global $wpdb;
+$pipelines = $wpdb->get_results(
+    "SELECT id, name, description, steps, created_at FROM {$wpdb->prefix}aica_pipelines ORDER BY name ASC"
+) ?: [];
+
+$agent_info = [
+    'content_analyzer'   => [ 'icon' => '🔍', 'name' => 'Content-Analyst',      'result_key' => 'analysis_result' ],
+    'audience_analyzer'  => [ 'icon' => '👥', 'name' => 'Zielgruppenanalyst',    'result_key' => 'audience_result' ],
+    'keyword_researcher' => [ 'icon' => '🔑', 'name' => 'Keyword-Rechercheur',   'result_key' => 'keyword_result' ],
+    'researcher'         => [ 'icon' => '📚', 'name' => 'Tiefenrechercheur',     'result_key' => 'research_result' ],
+    'content_writer'     => [ 'icon' => '✍️', 'name' => 'Content-Autor',         'result_key' => 'final_content' ],
+];
+
+$source_options = [
+    ''                => '— Quelle wählen —',
+    'analysis_result' => 'Content-Analyse',
+    'audience_result' => 'Zielgruppenanalyse',
+    'keyword_result'  => 'Keyword-Recherche',
+    'research_result' => 'Recherche',
+];
+?>
+<div class="wrap aica-wrap">
+    <div class="aica-header">
+        <h1>🔀 Pipelines</h1>
+        <p class="aica-header-sub">Erstelle eigene Agenten-Pipelines per Drag &amp; Drop und verwende sie in Automatisierungs-Jobs.</p>
+    </div>
+
+    <!-- Bestehende Pipelines -->
+    <div class="aica-card" id="aica-pipeline-list-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h2 class="aica-card-title" style="margin-bottom:0;">Gespeicherte Pipelines</h2>
+            <button type="button" id="aica-new-pipeline-btn" class="aica-btn aica-btn-primary">
+                ➕ Neue Pipeline
+            </button>
+        </div>
+
+        <?php if ( empty( $pipelines ) ) : ?>
+        <div class="aica-empty-state" style="text-align:center;padding:32px 0;color:var(--aica-text-muted);">
+            <p style="font-size:32px;margin-bottom:8px;">🔀</p>
+            <p>Noch keine Pipelines erstellt. Klicke auf „Neue Pipeline" um loszulegen.</p>
+        </div>
+        <?php else : ?>
+        <table class="aica-table aica-table-full">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Beschreibung</th>
+                    <th>Schritte</th>
+                    <th>Erstellt</th>
+                    <th>Aktionen</th>
+                </tr>
+            </thead>
+            <tbody id="aica-pipeline-table-body">
+                <?php foreach ( $pipelines as $pipeline ) :
+                    $steps = json_decode( $pipeline->steps, true ) ?: [];
+                ?>
+                <tr id="aica-pipeline-row-<?php echo esc_attr( $pipeline->id ); ?>">
+                    <td><strong><?php echo esc_html( $pipeline->name ); ?></strong></td>
+                    <td><?php echo esc_html( $pipeline->description ?: '—' ); ?></td>
+                    <td>
+                        <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                            <?php foreach ( $steps as $step ) :
+                                $info    = $agent_info[ $step['agent'] ] ?? null;
+                                $enabled = $step['enabled'] ?? true;
+                                if ( ! $info ) continue;
+                            ?>
+                            <span title="<?php echo esc_attr( $info['name'] ); ?>"
+                                  style="opacity:<?php echo $enabled ? '1' : '.4'; ?>">
+                                <?php echo esc_html( $info['icon'] ); ?>
+                            </span>
+                            <?php endforeach; ?>
+                            <span style="color:var(--aica-text-muted);font-size:12px;">(<?php echo count( $steps ); ?>)</span>
+                        </div>
+                    </td>
+                    <td><?php echo esc_html( wp_date( 'd.m.Y', strtotime( $pipeline->created_at ) ) ); ?></td>
+                    <td class="aica-table-actions">
+                        <button type="button"
+                                class="aica-btn aica-btn-small aica-btn-secondary aica-edit-pipeline"
+                                data-id="<?php echo esc_attr( $pipeline->id ); ?>">
+                            ✏️ Bearbeiten
+                        </button>
+                        <button type="button"
+                                class="aica-btn aica-btn-small aica-btn-danger aica-delete-pipeline"
+                                data-id="<?php echo esc_attr( $pipeline->id ); ?>">
+                            🗑️
+                        </button>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+        <?php endif; ?>
+    </div>
+
+    <!-- Pipeline Builder (initial versteckt) -->
+    <div id="aica-pipeline-builder" class="aica-card" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <h2 class="aica-card-title" style="margin-bottom:0;" id="aica-builder-title">Neue Pipeline</h2>
+            <button type="button" id="aica-builder-close" class="aica-btn aica-btn-secondary">✕ Schließen</button>
+        </div>
+
+        <input type="hidden" id="aica-pipeline-id" value="0">
+
+        <!-- Name & Beschreibung -->
+        <div class="aica-form-row">
+            <div class="aica-form-group aica-form-half">
+                <label class="aica-label">Pipeline-Name *</label>
+                <input type="text" id="aica-pipeline-name" class="aica-input large-text"
+                       placeholder="z.B. 'Schnelle SEO-Pipeline'">
+            </div>
+            <div class="aica-form-group aica-form-half">
+                <label class="aica-label">Beschreibung</label>
+                <input type="text" id="aica-pipeline-description" class="aica-input large-text"
+                       placeholder="Optional: Kurze Erläuterung">
+            </div>
+        </div>
+
+        <!-- Builder Layout -->
+        <div class="aica-pipeline-builder-layout">
+
+            <!-- Linke Palette -->
+            <div class="aica-pipeline-palette">
+                <h3 style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--aica-text-muted);">
+                    VERFÜGBARE AGENTEN
+                </h3>
+                <p style="font-size:12px;color:var(--aica-text-muted);margin-bottom:16px;">
+                    Klicke auf einen Agenten, um ihn zur Pipeline hinzuzufügen.
+                </p>
+                <?php foreach ( $agent_info as $key => $info ) : ?>
+                <div class="aica-palette-item" data-agent="<?php echo esc_attr( $key ); ?>">
+                    <span class="aica-palette-icon"><?php echo esc_html( $info['icon'] ); ?></span>
+                    <span class="aica-palette-name"><?php echo esc_html( $info['name'] ); ?></span>
+                    <span class="aica-palette-add">＋</span>
+                </div>
+                <?php endforeach; ?>
+            </div>
+
+            <!-- Rechter Canvas -->
+            <div class="aica-pipeline-canvas-wrap">
+                <h3 style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--aica-text-muted);">
+                    PIPELINE-SCHRITTE
+                    <span style="font-weight:400;margin-left:8px;">(Reihenfolge per Drag &amp; Drop ändern)</span>
+                </h3>
+
+                <div id="aica-pipeline-canvas" class="aica-pipeline-canvas">
+                    <div class="aica-canvas-placeholder" id="aica-canvas-placeholder">
+                        <p>👈 Agenten aus der Palette hinzufügen</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Speichern -->
+        <div class="aica-form-actions" style="margin-top:24px;">
+            <button type="button" id="aica-save-pipeline" class="aica-btn aica-btn-primary aica-btn-large">
+                💾 Pipeline speichern
+            </button>
+            <button type="button" id="aica-builder-cancel" class="aica-btn aica-btn-secondary">
+                Abbrechen
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Agent-Info für JavaScript -->
+<script id="aica-agent-info-data" type="application/json">
+<?php echo wp_json_encode( $agent_info ); ?>
+</script>
+
+<!-- Bestehende Pipelines für JavaScript -->
+<script id="aica-pipelines-data" type="application/json">
+<?php
+$pipelines_js = array_map( function( $p ) {
+    return [
+        'id'          => (int) $p->id,
+        'name'        => $p->name,
+        'description' => $p->description ?? '',
+        'steps'       => json_decode( $p->steps, true ) ?: [],
+    ];
+}, $pipelines );
+echo wp_json_encode( array_values( $pipelines_js ) );
+?>
+</script>
+
+<!-- Source-Options für Bedingungen -->
+<script id="aica-source-options-data" type="application/json">
+<?php echo wp_json_encode( $source_options ); ?>
+</script>

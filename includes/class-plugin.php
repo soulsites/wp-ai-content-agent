@@ -36,6 +36,7 @@ class Plugin {
         require_once AICA_PLUGIN_DIR . 'includes/agents/class-researcher.php';
         require_once AICA_PLUGIN_DIR . 'includes/agents/class-content-writer.php';
         require_once AICA_PLUGIN_DIR . 'includes/class-orchestrator.php';
+        require_once AICA_PLUGIN_DIR . 'includes/class-pipeline-runner.php';
         require_once AICA_PLUGIN_DIR . 'includes/class-cron-manager.php';
         require_once AICA_PLUGIN_DIR . 'includes/class-post-publisher.php';
 
@@ -59,6 +60,9 @@ class Plugin {
         add_action( 'wp_ajax_aica_save_job',         [ $this, 'ajax_save_job' ] );
         add_action( 'wp_ajax_aica_delete_job',       [ $this, 'ajax_delete_job' ] );
         add_action( 'wp_ajax_aica_run_job_now',      [ $this, 'ajax_run_job_now' ] );
+        add_action( 'wp_ajax_aica_save_pipeline',    [ $this, 'ajax_save_pipeline' ] );
+        add_action( 'wp_ajax_aica_delete_pipeline',  [ $this, 'ajax_delete_pipeline' ] );
+        add_action( 'wp_ajax_aica_get_pipelines',    [ $this, 'ajax_get_pipelines' ] );
     }
 
     public function ajax_generate_content(): void {
@@ -260,6 +264,7 @@ class Plugin {
             'voice_id'    => absint( $_POST['voice_id'] ?? 0 ) ?: null,
             'post_status' => sanitize_key( $_POST['post_status'] ?? 'draft' ),
             'category_id' => absint( $_POST['category_id'] ?? 0 ) ?: null,
+            'pipeline_id' => absint( $_POST['pipeline_id'] ?? 0 ) ?: null,
             'schedule'    => $schedule,
             'active'      => 1,
             'settings'    => wp_json_encode( [
@@ -299,6 +304,139 @@ class Plugin {
         $wpdb->delete( $wpdb->prefix . 'aica_jobs', [ 'id' => $job_id ], [ '%d' ] );
 
         wp_send_json_success();
+    }
+
+    public function ajax_save_pipeline(): void {
+        check_ajax_referer( 'aica_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( [], 403 );
+        }
+
+        global $wpdb;
+        $table       = $wpdb->prefix . 'aica_pipelines';
+        $pipeline_id = absint( $_POST['pipeline_id'] ?? 0 );
+        $name        = sanitize_text_field( wp_unslash( $_POST['name'] ?? '' ) );
+        $description = sanitize_textarea_field( wp_unslash( $_POST['description'] ?? '' ) );
+
+        if ( empty( $name ) ) {
+            wp_send_json_error( [ 'message' => 'Bitte einen Namen angeben.' ] );
+        }
+
+        // Steps validieren und sanitieren
+        $raw_steps = wp_unslash( $_POST['steps'] ?? '[]' );
+        $steps     = json_decode( $raw_steps, true );
+
+        if ( ! is_array( $steps ) ) {
+            wp_send_json_error( [ 'message' => 'Ungültige Steps.' ] );
+        }
+
+        $valid_agents    = [ 'content_analyzer', 'audience_analyzer', 'keyword_researcher', 'researcher', 'content_writer' ];
+        $valid_operators = [ 'contains', 'not_contains', 'length_gt', 'length_lt' ];
+        $valid_actions   = [ 'continue', 'skip', 'stop' ];
+
+        $clean_steps = [];
+        foreach ( $steps as $step ) {
+            $agent = sanitize_key( $step['agent'] ?? '' );
+            if ( ! in_array( $agent, $valid_agents, true ) ) {
+                continue;
+            }
+
+            $clean_conditions = [];
+            foreach ( (array) ( $step['conditions'] ?? [] ) as $cond ) {
+                $operator = sanitize_key( $cond['operator'] ?? 'contains' );
+                if ( ! in_array( $operator, $valid_operators, true ) ) {
+                    $operator = 'contains';
+                }
+                $on_match    = sanitize_key( $cond['on_match']    ?? 'continue' );
+                $on_no_match = sanitize_key( $cond['on_no_match'] ?? 'continue' );
+                if ( ! in_array( $on_match,    $valid_actions, true ) ) { $on_match    = 'continue'; }
+                if ( ! in_array( $on_no_match, $valid_actions, true ) ) { $on_no_match = 'continue'; }
+
+                $clean_conditions[] = [
+                    'source'      => sanitize_key( $cond['source'] ?? '' ),
+                    'operator'    => $operator,
+                    'value'       => sanitize_text_field( $cond['value'] ?? '' ),
+                    'on_match'    => $on_match,
+                    'on_no_match' => $on_no_match,
+                ];
+            }
+
+            $clean_steps[] = [
+                'id'         => sanitize_key( $step['id'] ?? uniqid( 'step_' ) ),
+                'agent'      => $agent,
+                'enabled'    => ! empty( $step['enabled'] ),
+                'conditions' => $clean_conditions,
+            ];
+        }
+
+        $data = [
+            'name'        => $name,
+            'description' => $description,
+            'steps'       => wp_json_encode( $clean_steps ),
+        ];
+
+        if ( $pipeline_id ) {
+            $wpdb->update( $table, $data, [ 'id' => $pipeline_id ], null, [ '%d' ] );
+        } else {
+            $wpdb->insert( $table, $data );
+            $pipeline_id = (int) $wpdb->insert_id;
+        }
+
+        wp_send_json_success( [ 'pipeline_id' => $pipeline_id ] );
+    }
+
+    public function ajax_delete_pipeline(): void {
+        check_ajax_referer( 'aica_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( [], 403 );
+        }
+
+        $pipeline_id = absint( $_POST['pipeline_id'] ?? 0 );
+        if ( ! $pipeline_id ) {
+            wp_send_json_error( [ 'message' => 'Keine Pipeline-ID.' ] );
+        }
+
+        global $wpdb;
+        $wpdb->delete( $wpdb->prefix . 'aica_pipelines', [ 'id' => $pipeline_id ], [ '%d' ] );
+        // Jobs auf Standard-Pipeline zurücksetzen
+        $wpdb->update(
+            $wpdb->prefix . 'aica_jobs',
+            [ 'pipeline_id' => null ],
+            [ 'pipeline_id' => $pipeline_id ],
+            [ null ],
+            [ '%d' ]
+        );
+
+        wp_send_json_success();
+    }
+
+    public function ajax_get_pipelines(): void {
+        check_ajax_referer( 'aica_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( [], 403 );
+        }
+
+        global $wpdb;
+        $rows = $wpdb->get_results(
+            "SELECT id, name, description, steps, created_at FROM {$wpdb->prefix}aica_pipelines ORDER BY name ASC"
+        );
+
+        $pipelines = array_map( function ( $row ) {
+            $steps = json_decode( $row->steps, true ) ?: [];
+            return [
+                'id'          => (int) $row->id,
+                'name'        => $row->name,
+                'description' => $row->description,
+                'steps'       => $steps,
+                'step_count'  => count( $steps ),
+                'created_at'  => $row->created_at,
+            ];
+        }, $rows ?: [] );
+
+        wp_send_json_success( [ 'pipelines' => $pipelines ] );
     }
 
     public function ajax_run_job_now(): void {

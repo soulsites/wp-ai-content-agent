@@ -9,10 +9,11 @@ defined( 'ABSPATH' ) || exit;
 class Installer {
 
     /** Tabellenpräfix für Custom Tables */
-    const TABLE_JOBS    = 'aica_jobs';
-    const TABLE_CONTENT = 'aica_content';
-    const TABLE_LOGS    = 'aica_logs';
-    const DB_VERSION    = '1.0.2';
+    const TABLE_JOBS      = 'aica_jobs';
+    const TABLE_CONTENT   = 'aica_content';
+    const TABLE_LOGS      = 'aica_logs';
+    const TABLE_PIPELINES = 'aica_pipelines';
+    const DB_VERSION      = '1.1.0';
 
     /**
      * Prüft ob das DB-Schema aktuell ist und führt ggf. ein Upgrade durch.
@@ -31,6 +32,20 @@ class Installer {
      */
     private static function add_missing_columns(): void {
         global $wpdb;
+
+        // pipeline_id zu wp_aica_jobs hinzufügen
+        $jobs_table      = $wpdb->prefix . self::TABLE_JOBS;
+        $jobs_existing   = $wpdb->get_col(
+            $wpdb->prepare(
+                "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s",
+                $jobs_table
+            )
+        );
+        if ( ! in_array( 'pipeline_id', $jobs_existing, true ) ) {
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+            $wpdb->query( "ALTER TABLE `{$jobs_table}` ADD COLUMN `pipeline_id` BIGINT UNSIGNED DEFAULT NULL" );
+        }
+
         $table = $wpdb->prefix . self::TABLE_CONTENT;
 
         $existing = $wpdb->get_col(
@@ -42,6 +57,7 @@ class Installer {
 
         $to_add = [
             'job_id'           => 'BIGINT UNSIGNED DEFAULT NULL',
+            'pipeline_id'      => 'BIGINT UNSIGNED DEFAULT NULL',
             'voice_id'         => 'BIGINT UNSIGNED DEFAULT NULL',
             'post_status'      => "VARCHAR(20) NOT NULL DEFAULT 'draft'",
             'category_id'      => 'BIGINT UNSIGNED DEFAULT NULL',
@@ -128,6 +144,18 @@ class Installer {
             KEY idx_job_id (job_id),
             KEY idx_status (status),
             KEY idx_wp_post_id (wp_post_id)
+        ) {$charset_collate};" );
+
+        // Tabelle: Custom Pipelines
+        $table_pipelines = $wpdb->prefix . self::TABLE_PIPELINES;
+        dbDelta( "CREATE TABLE {$table_pipelines} (
+            id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            name        VARCHAR(255)    NOT NULL,
+            description TEXT            DEFAULT NULL,
+            steps       LONGTEXT        NOT NULL,
+            created_at  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (id)
         ) {$charset_collate};" );
 
         // Tabelle: Agent-Logs
