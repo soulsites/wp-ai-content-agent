@@ -214,8 +214,11 @@ PROMPT;
             return $score;
         }
 
+        // Bei mehreren Keywords (kommagetrennt) nur das erste (Primär-Keyword) verwenden
+        $primary_keyword = trim( explode( ',', $keyword )[0] );
+
         $lower_content = mb_strtolower( $content );
-        $lower_keyword = mb_strtolower( $keyword );
+        $lower_keyword = mb_strtolower( $primary_keyword );
         $word_count    = str_word_count( $content );
 
         // Keyword in H1
