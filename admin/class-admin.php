@@ -46,6 +46,7 @@ class Admin {
         add_submenu_page( 'aica', 'Automatisierungs-Jobs', 'Automatisierungs-Jobs', 'manage_options',  'aica-jobs',          [ $this, 'page_jobs' ] );
         add_submenu_page( 'aica', 'Generierter Content',   'Content-Verlauf',       'edit_posts',      'aica-content',       [ $this, 'page_content' ] );
         add_submenu_page( 'aica', 'Voice Profile',         'Voice Profile',         'manage_options',  'aica-voices',        [ $this, 'page_voices' ] );
+        add_submenu_page( 'aica', 'Pipelines',              'Pipelines',             'manage_options',  'aica-pipelines',     [ $this, 'page_pipelines' ] );
         add_submenu_page( 'aica', 'Agenten',               'Agenten',               'manage_options',  'aica-agents',        [ $this, 'page_agents' ] );
         add_submenu_page( 'aica', 'Einstellungen',         'Einstellungen',         'manage_options',  'aica-settings',      [ $this, 'page_settings' ] );
     }
@@ -62,19 +63,43 @@ class Admin {
             AICA_VERSION
         );
 
+        // SortableJS für den Pipeline-Builder
+        wp_enqueue_script(
+            'sortablejs',
+            'https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js',
+            [],
+            '1.15.6',
+            true
+        );
+
         wp_enqueue_script(
             'aica-admin',
             AICA_PLUGIN_URL . 'admin/assets/js/admin.js',
-            [ 'jquery' ],
+            [ 'jquery', 'sortablejs' ],
             AICA_VERSION,
             true
         );
 
+        // Alle gespeicherten Pipelines für Job-Modal und Pipeline-Seite
+        global $wpdb;
+        $pipelines_raw = $wpdb->get_results(
+            "SELECT id, name, description, steps FROM {$wpdb->prefix}aica_pipelines ORDER BY name ASC"
+        ) ?: [];
+        $pipelines = array_map( function( $p ) {
+            return [
+                'id'          => (int) $p->id,
+                'name'        => $p->name,
+                'description' => $p->description,
+                'steps'       => json_decode( $p->steps, true ) ?: [],
+            ];
+        }, $pipelines_raw );
+
         wp_localize_script( 'aica-admin', 'aicaData', [
-            'nonce'    => wp_create_nonce( 'aica_nonce' ),
-            'ajaxUrl'  => admin_url( 'admin-ajax.php' ),
-            'adminUrl' => admin_url( 'admin.php' ),
-            'i18n'     => [
+            'nonce'     => wp_create_nonce( 'aica_nonce' ),
+            'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
+            'adminUrl'  => admin_url( 'admin.php' ),
+            'pipelines' => $pipelines,
+            'i18n'      => [
                 'generating'   => 'Generierung läuft...',
                 'done'         => 'Abgeschlossen!',
                 'error'        => 'Fehler aufgetreten.',
@@ -110,6 +135,7 @@ class Admin {
     public function page_jobs():      void { $this->render( 'jobs' );      }
     public function page_content():   void { $this->render( 'content' );   }
     public function page_voices():    void { $this->render( 'voices' );    }
+    public function page_pipelines(): void { $this->render( 'pipelines' ); }
     public function page_agents():    void { $this->render( 'agents' );    }
     public function page_settings():  void { $this->render( 'settings' );  }
 

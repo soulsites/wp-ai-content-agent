@@ -181,6 +181,21 @@ $schedules      = \AICA\Settings::get_available_schedules();
                                min="300" max="5000" step="100"
                                class="small-text aica-input">
                     </div>
+
+                    <div class="aica-form-group">
+                        <label class="aica-label">
+                            Pipeline
+                            <span class="aica-hint">Eigene Agenten-Pipeline verwenden (optional)</span>
+                        </label>
+                        <select id="aica-job-pipeline" name="pipeline_id" class="aica-select">
+                            <option value="0">— Standard (alle 5 Agenten) —</option>
+                            <!-- Wird per JS aus aicaData.pipelines befüllt -->
+                        </select>
+                        <p class="description" style="margin-top:6px;font-size:12px;">
+                            Pipelines erstellen und verwalten unter
+                            <a href="<?php echo esc_url( admin_url( 'admin.php?page=aica-pipelines' ) ); ?>">Pipelines</a>.
+                        </p>
+                    </div>
                 </form>
             </div>
             <div class="aica-modal-footer">

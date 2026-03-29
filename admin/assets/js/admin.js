@@ -399,6 +399,15 @@
             $('#aica-job-form')[0].reset();
             $('#aica-job-id').val(0);
 
+            // Pipeline-Dropdown befüllen
+            const $pipelineSelect = $('#aica-job-pipeline');
+            if ($pipelineSelect.length) {
+                $pipelineSelect.find('option:not([value="0"])').remove();
+                (aicaData.pipelines || []).forEach(p => {
+                    $pipelineSelect.append(`<option value="${p.id}">${p.name}</option>`);
+                });
+            }
+
             if (jobId) {
                 const job = this.jobs.find(j => j.id == jobId);
                 if (job) {
@@ -410,6 +419,7 @@
                     $('#aica-job-post-status').val(job.post_status);
                     $('#aica-job-voice').val(job.voice_id || 0);
                     $('#aica-job-category').val(job.category_id || 0);
+                    $pipelineSelect.val(job.pipeline_id || 0);
                 }
             }
 
@@ -423,16 +433,17 @@
                 url:    AJAX_URL,
                 method: 'POST',
                 data: {
-                    action:       'aica_save_job',
-                    nonce:         NONCE,
-                    job_id:        $('#aica-job-id').val(),
-                    name:          $('#aica-job-name').val(),
-                    topic:         $('#aica-job-topic').val(),
-                    keywords:      $('#aica-job-keywords').val(),
-                    schedule:      $('#aica-job-schedule').val(),
-                    post_status:   $('#aica-job-post-status').val(),
-                    voice_id:      $('#aica-job-voice').val(),
-                    category_id:   $('#aica-job-category').val(),
+                    action:        'aica_save_job',
+                    nonce:          NONCE,
+                    job_id:         $('#aica-job-id').val(),
+                    name:           $('#aica-job-name').val(),
+                    topic:          $('#aica-job-topic').val(),
+                    keywords:       $('#aica-job-keywords').val(),
+                    schedule:       $('#aica-job-schedule').val(),
+                    post_status:    $('#aica-job-post-status').val(),
+                    voice_id:       $('#aica-job-voice').val(),
+                    category_id:    $('#aica-job-category').val(),
+                    pipeline_id:    $('#aica-job-pipeline').val() || 0,
                     min_word_count: $('[name="min_word_count"]').val(),
                 },
                 success: (resp) => {
@@ -534,6 +545,288 @@
     };
 
     /* ============================================================
+       Pipeline Builder
+    ============================================================ */
+    const PipelineBuilder = {
+        sortable:      null,
+        steps:         [],
+        agentInfo:     {},
+        sourceOptions: {},
+        pipelines:     [],
+
+        init() {
+            const $builder = $('#aica-pipeline-builder');
+            if (!$builder.length) return;
+
+            // Daten aus DOM laden
+            try {
+                const ai = document.getElementById('aica-agent-info-data');
+                if (ai) this.agentInfo = JSON.parse(ai.textContent);
+                const so = document.getElementById('aica-source-options-data');
+                if (so) this.sourceOptions = JSON.parse(so.textContent);
+                const pd = document.getElementById('aica-pipelines-data');
+                if (pd) this.pipelines = JSON.parse(pd.textContent);
+            } catch(e) {}
+
+            // SortableJS initialisieren
+            const canvas = document.getElementById('aica-pipeline-canvas');
+            if (canvas && typeof Sortable !== 'undefined') {
+                this.sortable = Sortable.create(canvas, {
+                    handle:    '.aica-step-drag-handle',
+                    animation: 150,
+                    ghostClass: 'sortable-ghost',
+                    onEnd: () => this.syncStepsFromDOM(),
+                });
+            }
+
+            // Events
+            $('#aica-new-pipeline-btn').on('click', () => this.openBuilder());
+            $('#aica-builder-close, #aica-builder-cancel').on('click', () => this.closeBuilder());
+            $('#aica-save-pipeline').on('click', () => this.savePipeline());
+            $(document).on('click', '.aica-palette-item', (e) => {
+                this.addStep($(e.currentTarget).data('agent'));
+            });
+            $(document).on('click', '.aica-edit-pipeline', (e) => {
+                this.editPipeline($(e.currentTarget).data('id'));
+            });
+            $(document).on('click', '.aica-delete-pipeline', (e) => {
+                this.deletePipeline($(e.currentTarget).data('id'));
+            });
+            $(document).on('click', '.aica-remove-step', (e) => {
+                this.removeStep($(e.currentTarget).closest('.aica-pipeline-step-item').data('step-id'));
+            });
+            $(document).on('click', '.aica-add-condition-btn', (e) => {
+                const stepId = $(e.currentTarget).closest('.aica-pipeline-step-item').data('step-id');
+                this.addCondition(stepId);
+            });
+            $(document).on('click', '.aica-remove-condition', (e) => {
+                $(e.currentTarget).closest('.aica-condition-row').remove();
+            });
+            $(document).on('change', '.aica-step-enabled-toggle', (e) => {
+                const $item = $(e.currentTarget).closest('.aica-pipeline-step-item');
+                const enabled = $(e.currentTarget).prop('checked');
+                $item.toggleClass('aica-step-disabled', !enabled);
+            });
+        },
+
+        openBuilder(pipeline = null) {
+            this.steps = [];
+            $('#aica-pipeline-id').val(0);
+            $('#aica-pipeline-name').val('');
+            $('#aica-pipeline-description').val('');
+            $('#aica-builder-title').text('Neue Pipeline');
+            $('#aica-pipeline-canvas').find('.aica-pipeline-step-item').remove();
+            $('#aica-canvas-placeholder').show();
+
+            if (pipeline) {
+                $('#aica-pipeline-id').val(pipeline.id);
+                $('#aica-pipeline-name').val(pipeline.name);
+                $('#aica-pipeline-description').val(pipeline.description || '');
+                $('#aica-builder-title').text('Pipeline bearbeiten: ' + pipeline.name);
+                (pipeline.steps || []).forEach(step => {
+                    this.steps.push({...step});
+                    this.renderStep(step);
+                });
+                this.updatePlaceholder();
+            }
+
+            $('#aica-pipeline-builder').show();
+            $('html, body').animate({ scrollTop: $('#aica-pipeline-builder').offset().top - 40 }, 300);
+        },
+
+        closeBuilder() {
+            $('#aica-pipeline-builder').hide();
+            this.steps = [];
+        },
+
+        editPipeline(id) {
+            const pipeline = this.pipelines.find(p => p.id == id);
+            if (pipeline) this.openBuilder(pipeline);
+        },
+
+        addStep(agentKey) {
+            const info = this.agentInfo[agentKey];
+            if (!info) return;
+            const step = {
+                id:         'step_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+                agent:      agentKey,
+                enabled:    true,
+                conditions: [],
+            };
+            this.steps.push(step);
+            this.renderStep(step);
+            this.updatePlaceholder();
+        },
+
+        renderStep(step) {
+            const info    = this.agentInfo[step.agent] || { icon: '❓', name: step.agent };
+            const enabled = step.enabled !== false;
+
+            let condHtml = '';
+            (step.conditions || []).forEach(cond => {
+                condHtml += this.buildConditionRowHtml(cond);
+            });
+
+            const $item = $(`
+                <div class="aica-pipeline-step-item ${!enabled ? 'aica-step-disabled' : ''}"
+                     data-step-id="${this.escHtml(step.id)}"
+                     data-agent="${this.escHtml(step.agent)}">
+                    <div class="aica-step-header">
+                        <span class="aica-step-drag-handle" title="Verschieben">⠿</span>
+                        <span class="aica-step-icon">${info.icon}</span>
+                        <span class="aica-step-name">${this.escHtml(info.name)}</span>
+                        <label class="aica-toggle aica-step-toggle" title="Aktiviert">
+                            <input type="checkbox" class="aica-step-enabled-toggle" ${enabled ? 'checked' : ''}>
+                            <span class="aica-toggle-slider"></span>
+                        </label>
+                        <button type="button" class="aica-add-condition-btn aica-btn aica-btn-small aica-btn-secondary"
+                                title="Bedingung hinzufügen">
+                            + Bedingung
+                        </button>
+                        <button type="button" class="aica-remove-step aica-btn aica-btn-small aica-btn-danger"
+                                title="Entfernen">✕</button>
+                    </div>
+                    <div class="aica-step-conditions">
+                        ${condHtml}
+                    </div>
+                </div>
+            `);
+
+            $('#aica-canvas-placeholder').before($item);
+        },
+
+        buildConditionRowHtml(cond = {}) {
+            const sourceOpts = Object.entries(this.sourceOptions).map(([val, label]) =>
+                `<option value="${this.escHtml(val)}" ${cond.source === val ? 'selected' : ''}>${this.escHtml(label)}</option>`
+            ).join('');
+
+            const operators = [
+                ['contains',     'enthält'],
+                ['not_contains', 'enthält nicht'],
+                ['length_gt',    'Länge >'],
+                ['length_lt',    'Länge <'],
+            ];
+            const opOpts = operators.map(([val, label]) =>
+                `<option value="${val}" ${(cond.operator || 'contains') === val ? 'selected' : ''}>${label}</option>`
+            ).join('');
+
+            const actions = [['continue','weitermachen'],['skip','überspringen'],['stop','stoppen']];
+            const matchOpts    = actions.map(([v,l]) => `<option value="${v}" ${(cond.on_match    || 'continue') === v ? 'selected' : ''}>${l}</option>`).join('');
+            const noMatchOpts  = actions.map(([v,l]) => `<option value="${v}" ${(cond.on_no_match || 'continue') === v ? 'selected' : ''}>${l}</option>`).join('');
+
+            return `
+                <div class="aica-condition-row">
+                    <span class="aica-condition-label">WENN</span>
+                    <select class="aica-select aica-cond-source">${sourceOpts}</select>
+                    <select class="aica-select aica-cond-operator">${opOpts}</select>
+                    <input type="text" class="aica-input aica-cond-value" value="${this.escHtml(cond.value || '')}" placeholder="Wert…">
+                    <span class="aica-condition-label">→ Treffer:</span>
+                    <select class="aica-select aica-cond-on-match">${matchOpts}</select>
+                    <span class="aica-condition-label">Sonst:</span>
+                    <select class="aica-select aica-cond-on-no-match">${noMatchOpts}</select>
+                    <button type="button" class="aica-remove-condition aica-btn aica-btn-small aica-btn-danger" title="Bedingung entfernen">✕</button>
+                </div>`;
+        },
+
+        addCondition(stepId) {
+            const $item = $(`.aica-pipeline-step-item[data-step-id="${stepId}"]`);
+            $item.find('.aica-step-conditions').append(this.buildConditionRowHtml());
+        },
+
+        removeStep(stepId) {
+            $(`.aica-pipeline-step-item[data-step-id="${stepId}"]`).remove();
+            this.steps = this.steps.filter(s => s.id !== stepId);
+            this.updatePlaceholder();
+        },
+
+        updatePlaceholder() {
+            const hasSteps = $('#aica-pipeline-canvas .aica-pipeline-step-item').length > 0;
+            $('#aica-canvas-placeholder').toggle(!hasSteps);
+        },
+
+        syncStepsFromDOM() {
+            // Reihenfolge nach DOM aktualisieren
+            const order = [];
+            $('#aica-pipeline-canvas .aica-pipeline-step-item').each(function() {
+                order.push($(this).data('step-id'));
+            });
+            this.steps.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+        },
+
+        collectSteps() {
+            const steps = [];
+            $('#aica-pipeline-canvas .aica-pipeline-step-item').each((i, el) => {
+                const $item   = $(el);
+                const stepId  = $item.data('step-id');
+                const agent   = $item.data('agent');
+                const enabled = $item.find('.aica-step-enabled-toggle').prop('checked');
+
+                const conditions = [];
+                $item.find('.aica-condition-row').each((j, crow) => {
+                    const $row = $(crow);
+                    conditions.push({
+                        source:      $row.find('.aica-cond-source').val(),
+                        operator:    $row.find('.aica-cond-operator').val(),
+                        value:       $row.find('.aica-cond-value').val(),
+                        on_match:    $row.find('.aica-cond-on-match').val(),
+                        on_no_match: $row.find('.aica-cond-on-no-match').val(),
+                    });
+                });
+
+                steps.push({ id: stepId, agent, enabled, conditions });
+            });
+            return steps;
+        },
+
+        savePipeline() {
+            const name = $('#aica-pipeline-name').val().trim();
+            if (!name) { alert('Bitte einen Namen eingeben.'); return; }
+
+            const steps = this.collectSteps();
+            if (!steps.length) { alert('Bitte mindestens einen Agenten hinzufügen.'); return; }
+
+            const hasWriter = steps.some(s => s.agent === 'content_writer' && s.enabled);
+            if (!hasWriter) { alert('Die Pipeline muss einen aktivierten Content-Autor-Schritt enthalten.'); return; }
+
+            const $btn = $('#aica-save-pipeline').prop('disabled', true).text('💾 ' + I18N.saving);
+
+            $.ajax({
+                url:    AJAX_URL,
+                method: 'POST',
+                data: {
+                    action:       'aica_save_pipeline',
+                    nonce:         NONCE,
+                    pipeline_id:  $('#aica-pipeline-id').val(),
+                    name:          name,
+                    description:  $('#aica-pipeline-description').val(),
+                    steps:        JSON.stringify(steps),
+                },
+                success: (resp) => {
+                    if (resp.success) { location.reload(); }
+                    else alert(resp.data?.message || I18N.error);
+                },
+                complete: () => $btn.prop('disabled', false).text('💾 Pipeline speichern'),
+            });
+        },
+
+        deletePipeline(id) {
+            if (!confirm(I18N.confirm_del)) return;
+            $.ajax({
+                url:    AJAX_URL,
+                method: 'POST',
+                data:   { action: 'aica_delete_pipeline', nonce: NONCE, pipeline_id: id },
+                success: (resp) => {
+                    if (resp.success) $(`#aica-pipeline-row-${id}`).fadeOut(400, function(){ $(this).remove(); });
+                },
+            });
+        },
+
+        escHtml(str) {
+            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        },
+    };
+
+    /* ============================================================
        Reset Data
     ============================================================ */
     $('#aica-reset-data').on('click', function() {
@@ -552,6 +845,7 @@
         VoiceManager.init();
         JobManager.init();
         ContentDetails.init();
+        PipelineBuilder.init();
 
         // Modal-Backdrop close
         $(document).on('click', '.aica-modal-backdrop', function() {

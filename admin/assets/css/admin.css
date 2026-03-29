@@ -284,3 +284,149 @@
 
 /* ---- Admin Form Third ---- */
 .aica-form-row.three-col { grid-template-columns: 1fr 1fr 1fr; }
+
+/* ============================================================
+   Pipeline Builder
+============================================================ */
+
+/* Layout: Palette links, Canvas rechts */
+.aica-pipeline-builder-layout {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 20px;
+    margin-top: 20px;
+}
+@media (max-width: 900px) {
+    .aica-pipeline-builder-layout { grid-template-columns: 1fr; }
+}
+
+/* Agenten-Palette */
+.aica-pipeline-palette {
+    background: var(--aica-bg);
+    border: 1px solid var(--aica-border);
+    border-radius: var(--aica-radius);
+    padding: 16px;
+}
+.aica-palette-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    background: #fff;
+    border: 1px solid var(--aica-border);
+    border-radius: var(--aica-radius);
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: border-color .15s, box-shadow .15s;
+    font-size: 13px;
+}
+.aica-palette-item:hover {
+    border-color: var(--aica-primary);
+    box-shadow: 0 0 0 2px rgba(108,92,231,.15);
+}
+.aica-palette-icon { font-size: 18px; }
+.aica-palette-name { flex: 1; font-weight: 500; }
+.aica-palette-add  { color: var(--aica-primary); font-weight: 700; font-size: 16px; }
+
+/* Canvas */
+.aica-pipeline-canvas-wrap {
+    min-height: 200px;
+}
+.aica-pipeline-canvas {
+    min-height: 120px;
+    border: 2px dashed var(--aica-border);
+    border-radius: var(--aica-radius);
+    padding: 12px;
+    background: #fafafa;
+    transition: border-color .15s;
+}
+.aica-pipeline-canvas.sortable-drag-over {
+    border-color: var(--aica-primary);
+}
+.aica-canvas-placeholder {
+    text-align: center;
+    color: var(--aica-text-muted);
+    padding: 32px 0;
+    font-size: 14px;
+}
+
+/* Einzelner Step */
+.aica-pipeline-step-item {
+    background: #fff;
+    border: 1px solid var(--aica-border);
+    border-radius: var(--aica-radius);
+    margin-bottom: 10px;
+    transition: box-shadow .15s, opacity .15s;
+}
+.aica-pipeline-step-item.aica-step-disabled {
+    opacity: .55;
+}
+.aica-pipeline-step-item.sortable-ghost {
+    opacity: .35;
+    background: #f0eeff;
+    border-style: dashed;
+}
+
+/* Step Header */
+.aica-step-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+}
+.aica-step-drag-handle {
+    cursor: grab;
+    color: var(--aica-text-muted);
+    font-size: 18px;
+    line-height: 1;
+    padding: 0 4px;
+    user-select: none;
+}
+.aica-step-drag-handle:active { cursor: grabbing; }
+.aica-step-icon { font-size: 18px; }
+.aica-step-name { flex: 1; font-weight: 500; font-size: 13px; }
+
+/* Step Toggle (kleiner als normal) */
+.aica-step-toggle { margin-left: auto; }
+.aica-step-toggle .aica-toggle-slider { width: 36px; height: 20px; }
+.aica-step-toggle .aica-toggle-slider::before { width: 14px; height: 14px; top: 3px; left: 3px; }
+input:checked + .aica-step-toggle .aica-toggle-slider::before { transform: translateX(16px); }
+
+/* Conditions */
+.aica-step-conditions {
+    padding: 0 12px 10px;
+}
+.aica-condition-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    background: #f8f7ff;
+    border: 1px solid #d8d4f8;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    font-size: 12px;
+}
+.aica-condition-label {
+    font-weight: 600;
+    color: var(--aica-text-muted);
+    white-space: nowrap;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+}
+.aica-condition-row .aica-select,
+.aica-condition-row .aica-input {
+    font-size: 12px;
+    padding: 4px 8px;
+    height: auto;
+}
+.aica-condition-row .aica-cond-value {
+    width: 120px;
+    min-width: 80px;
+}
+.aica-add-condition-btn {
+    font-size: 11px !important;
+    padding: 3px 8px !important;
+}

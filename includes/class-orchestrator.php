@@ -91,51 +91,70 @@ class Orchestrator {
         ];
 
         try {
-            // 1. Content-Analyse
-            $context = $this->run_agent(
-                new Agents\Content_Analyzer(),
-                $content_id,
-                $context,
-                'analysis_result'
-            );
+            $pipeline_id = (int) ( $row->pipeline_id ?? 0 );
 
-            // 2. Zielgruppenanalyse
-            $context = $this->run_agent(
-                new Agents\Audience_Analyzer(),
-                $content_id,
-                $context,
-                'audience_result'
-            );
+            if ( $pipeline_id ) {
+                // Custom Pipeline ausführen
+                $runner  = new Pipeline_Runner();
+                $context = $runner->execute( $pipeline_id, $context, $content_id );
+                $this->total_tokens += $runner->get_total_tokens();
 
-            // 3. Keyword-Recherche
-            $context = $this->run_agent(
-                new Agents\Keyword_Researcher(),
-                $content_id,
-                $context,
-                'keyword_result'
-            );
+                // Writer-Agent-Instanz für Meta-Extraktion
+                $writer_agent  = $context['_writer_agent'] ?? new Agents\Content_Writer();
+                $final_content = $context['final_content']  ?? '';
 
-            // 4. Recherche
-            $context = $this->run_agent(
-                new Agents\Researcher(),
-                $content_id,
-                $context,
-                'research_result'
-            );
+                if ( empty( $final_content ) ) {
+                    throw new \RuntimeException( 'Custom Pipeline hat keinen Artikel generiert. Stellen Sie sicher, dass ein Content-Writer-Step aktiviert ist.' );
+                }
+            } else {
+                // Standard-Pipeline (hardcodiert)
 
-            // 5. Content-Writer
-            $writer_agent = new Agents\Content_Writer();
-            $writer_agent->set_content_id( $content_id );
+                // 1. Content-Analyse
+                $context = $this->run_agent(
+                    new Agents\Content_Analyzer(),
+                    $content_id,
+                    $context,
+                    'analysis_result'
+                );
 
-            $content_result = $writer_agent->run( $context );
+                // 2. Zielgruppenanalyse
+                $context = $this->run_agent(
+                    new Agents\Audience_Analyzer(),
+                    $content_id,
+                    $context,
+                    'audience_result'
+                );
 
-            if ( is_wp_error( $content_result ) ) {
-                $writer_error = $content_result->get_error_message() ?: 'Unbekannter Fehler beim Schreiben des Artikels';
-                throw new \RuntimeException( 'Content-Writer: ' . $writer_error );
+                // 3. Keyword-Recherche
+                $context = $this->run_agent(
+                    new Agents\Keyword_Researcher(),
+                    $content_id,
+                    $context,
+                    'keyword_result'
+                );
+
+                // 4. Recherche
+                $context = $this->run_agent(
+                    new Agents\Researcher(),
+                    $content_id,
+                    $context,
+                    'research_result'
+                );
+
+                // 5. Content-Writer
+                $writer_agent = new Agents\Content_Writer();
+                $writer_agent->set_content_id( $content_id );
+
+                $content_result = $writer_agent->run( $context );
+
+                if ( is_wp_error( $content_result ) ) {
+                    $writer_error = $content_result->get_error_message() ?: 'Unbekannter Fehler beim Schreiben des Artikels';
+                    throw new \RuntimeException( 'Content-Writer: ' . $writer_error );
+                }
+
+                $this->total_tokens += $writer_agent->get_total_tokens();
+                $final_content = $content_result;
             }
-
-            $this->total_tokens += $writer_agent->get_total_tokens();
-            $final_content = $content_result;
 
             // Meta-Daten extrahieren
             $meta       = $writer_agent->extract_meta( $final_content );
