@@ -274,9 +274,9 @@ class Orchestrator {
     }
 
     /**
-     * Schreibt einen System-Log-Eintrag.
+     * Schreibt einen System-Log-Eintrag mit optionalem Datenkontext.
      */
-    private function log( int $content_id, string $agent, string $level, string $message ): void {
+    private function log( int $content_id, string $agent, string $level, string $message, array $data = [] ): void {
         global $wpdb;
         $wpdb->insert(
             $wpdb->prefix . 'aica_logs',
@@ -285,8 +285,9 @@ class Orchestrator {
                 'agent'      => $agent,
                 'level'      => $level,
                 'message'    => $message,
+                'data'       => ! empty( $data ) ? wp_json_encode( $data ) : null,
             ],
-            [ '%d', '%s', '%s', '%s' ]
+            [ '%d', '%s', '%s', '%s', $data ? '%s' : null ]
         );
     }
 

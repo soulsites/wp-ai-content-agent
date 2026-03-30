@@ -189,16 +189,44 @@ PROMPT;
             'description' => '',
         ];
 
-        // Meta-Title extrahieren
-        if ( preg_match( '/meta.?title[:\s]+([^\n]+)/i', $content, $m ) ) {
+        // Meta-Title extrahieren (bevorzugt expliziter Meta-Title im Content)
+        if ( preg_match( '/(?:^|\n)(?:##\s+)?Meta.?Title[:\s=]+(.+?)(?:\n|$)/im', $content, $m ) ) {
+            $meta['title'] = trim( $m[1], ' -:' );
+        } elseif ( preg_match( '/(?:^|\n)Meta.?Title[:\s=]+(.+?)(?:\n|$)/im', $content, $m ) ) {
+            $meta['title'] = trim( $m[1], ' -:' );
+        }
+        // Fallback: Erste H1 Überschrift
+        elseif ( preg_match( '/^#\s+(.+)$/m', $content, $m ) ) {
             $meta['title'] = trim( $m[1] );
-        } elseif ( preg_match( '/^#\s+(.+)$/m', $content, $m ) ) {
-            $meta['title'] = trim( $m[1] );
+        }
+        // Letzter Fallback: Erste Zeile oder erstes Wort-Cluster
+        else {
+            $lines = array_filter( array_map( 'trim', explode( "\n", $content ) ) );
+            if ( ! empty( $lines ) ) {
+                $first_line = $lines[0];
+                // Entferne Markdown-Formatierungen
+                $first_line = preg_replace( '/^#+\s+/', '', $first_line );
+                $first_line = trim( $first_line, '# *_-' );
+                if ( strlen( $first_line ) > 0 && strlen( $first_line ) < 200 ) {
+                    $meta['title'] = $first_line;
+                }
+            }
         }
 
         // Meta-Description extrahieren
-        if ( preg_match( '/meta.?description[:\s]+([^\n]+)/i', $content, $m ) ) {
-            $meta['description'] = trim( $m[1] );
+        if ( preg_match( '/(?:^|\n)(?:##\s+)?Meta.?Description[:\s=]+(.+?)(?:\n|$)/im', $content, $m ) ) {
+            $meta['description'] = trim( $m[1], ' -:' );
+        } elseif ( preg_match( '/(?:^|\n)Meta.?Description[:\s=]+(.+?)(?:\n|$)/im', $content, $m ) ) {
+            $meta['description'] = trim( $m[1], ' -:' );
+        }
+        // Fallback: Erste 160 Zeichen des Textes ohne Markdown
+        else {
+            $text_only = preg_replace( '/[#*_`\[\]()]+/', '', $content );
+            $text_only = preg_replace( '/\n+/', ' ', $text_only );
+            $first_paragraph = trim( substr( $text_only, 0, 160 ) );
+            if ( strlen( $first_paragraph ) > 20 ) {
+                $meta['description'] = rtrim( $first_paragraph, '.,!?' ) . '...';
+            }
         }
 
         return $meta;
