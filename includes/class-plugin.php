@@ -76,9 +76,10 @@ class Plugin {
             wp_send_json_error( [ 'message' => 'Keine Berechtigung.' ], 403 );
         }
 
-        $topic    = sanitize_text_field( wp_unslash( $_POST['topic'] ?? '' ) );
-        $keywords = sanitize_text_field( wp_unslash( $_POST['keywords'] ?? '' ) );
-        $voice_id = absint( $_POST['voice_id'] ?? 0 );
+        $topic       = sanitize_text_field( wp_unslash( $_POST['topic'] ?? '' ) );
+        $keywords    = sanitize_text_field( wp_unslash( $_POST['keywords'] ?? '' ) );
+        $pipeline_id = absint( $_POST['pipeline_id'] ?? 0 );
+        $voice_id    = absint( $_POST['voice_id'] ?? 0 );
         $post_status = sanitize_key( $_POST['post_status'] ?? 'draft' );
         $category_id = absint( $_POST['category_id'] ?? 0 );
 
@@ -90,6 +91,7 @@ class Plugin {
         $content_id   = $orchestrator->create_generation_job( [
             'topic'       => $topic,
             'keywords'    => $keywords,
+            'pipeline_id' => $pipeline_id,
             'voice_id'    => $voice_id,
             'post_status' => $post_status,
             'category_id' => $category_id,
