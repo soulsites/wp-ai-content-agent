@@ -16,6 +16,9 @@
         pollInterval: null,
         lastLogCount: 0,
         voiceData:   {},
+        pipelineData: {},
+        agentInfo:   {},
+        currentPipelineAgents: [],
 
         init() {
             const $form = $('#aica-generate-form');
@@ -27,10 +30,56 @@
                 if (raw) this.voiceData = JSON.parse(raw.textContent);
             } catch(e) {}
 
+            // Pipeline-Daten laden
+            try {
+                const raw = document.getElementById('aica-pipelines-generate-data');
+                if (raw) this.pipelineData = JSON.parse(raw.textContent);
+            } catch(e) {}
+
+            // Agent-Infos laden
+            try {
+                const raw = document.getElementById('aica-agent-info-generate-data');
+                if (raw) this.agentInfo = JSON.parse(raw.textContent);
+            } catch(e) {}
+
             $form.on('submit', (e) => { e.preventDefault(); this.start(); });
             $('#aica-generate-another').on('click', () => this.reset());
             $('#aica-voice').on('change', () => this.updateVoicePreview());
+            $('#aica-pipeline').on('change', () => this.updatePipelinePreview());
             this.updateVoicePreview();
+            this.updatePipelinePreview();
+        },
+
+        updatePipelinePreview() {
+            const pipelineId = parseInt($('#aica-pipeline').val() || '0', 10);
+            const pipeline = this.pipelineData[pipelineId];
+            if (!pipeline) {
+                this.currentPipelineAgents = [];
+                return;
+            }
+            this.currentPipelineAgents = pipeline.steps || [];
+        },
+
+        buildPipelineStatusUI() {
+            const $container = $('#aica-pipeline-status');
+            $container.empty();
+
+            if (!this.currentPipelineAgents || this.currentPipelineAgents.length === 0) {
+                $container.html('<p style="color: var(--aica-text-muted);">Keine Agenten in dieser Pipeline konfiguriert.</p>');
+                return;
+            }
+
+            this.currentPipelineAgents.forEach((agentKey, index) => {
+                const info = this.agentInfo[agentKey] || { icon: '❓', name: agentKey };
+                const html = `
+                    <div class="aica-pipeline-item" id="agent-${agentKey}">
+                        <span class="aica-pipeline-item-icon">⏳</span>
+                        <span class="aica-pipeline-item-label">${info.icon} ${info.name}</span>
+                        <span class="aica-pipeline-item-status"></span>
+                    </div>
+                `;
+                $container.append(html);
+            });
         },
 
         updateVoicePreview() {
@@ -55,12 +104,18 @@
             const topic = $('#aica-topic').val().trim();
             if (!topic) { alert('Bitte ein Thema eingeben.'); return; }
 
+            // Update pipeline selection vor dem Start
+            this.updatePipelinePreview();
+
             const $btn = $('#aica-submit-btn');
             $btn.prop('disabled', true);
             $('#aica-loading').show();
             $('#aica-status-panel').show();
             $('#aica-result, #aica-error').hide();
             this.lastLogCount = 0;
+
+            // Build Pipeline Status UI dynamisch
+            this.buildPipelineStatusUI();
 
             // Agent-Status zurücksetzen
             $('[id^="agent-"]').removeClass('active done error')
@@ -140,17 +195,51 @@
 
             newLogs.forEach(log => {
                 const time = log.created_at ? log.created_at.slice(11, 19) : '';
-                $log.append(
-                    `<div class="aica-log-entry ${log.level}">[${time}] [${log.agent}] ${$('<span>').text(log.message).html()}</div>`
-                );
+                const agentInfo = this.agentInfo[log.agent] || { icon: '❓', name: log.agent };
+
+                // Formatiere unterschiedliche Log-Typen
+                let icon = '📝';
+                let className = log.level || 'info';
+
+                if (log.level === 'error') {
+                    icon = '❌';
+                    className = 'error';
+                } else if (log.level === 'warning') {
+                    icon = '⚠️';
+                    className = 'warning';
+                } else if (log.message && log.message.includes('Abgeschlossen')) {
+                    icon = '✅';
+                    className = 'success';
+                } else if (log.agent === 'system') {
+                    icon = '⚙️';
+                    className = 'system';
+                }
+
+                const html = `
+                    <div class="aica-log-entry ${className}">
+                        <div class="aica-log-meta">
+                            <span class="aica-log-time">${time}</span>
+                            <span class="aica-log-agent">${agentInfo.icon} ${this.getAgentDisplayName(log.agent)}</span>
+                        </div>
+                        <div class="aica-log-message">${icon} ${$('<span>').text(log.message).html()}</div>
+                    </div>
+                `;
+                $log.append(html);
             });
 
             $log.scrollTop($log[0].scrollHeight);
             this.lastLogCount = logs.length;
         },
 
+        getAgentDisplayName(agentKey) {
+            if (agentKey === 'system') return 'System';
+            const info = this.agentInfo[agentKey];
+            return info ? info.name : agentKey;
+        },
+
         updatePipelineStatus(logs) {
-            const agentOrder = ['content_analyzer', 'audience_analyzer', 'keyword_researcher', 'researcher', 'content_writer'];
+            // Use actual agents from current pipeline instead of hardcoded list
+            const agentOrder = this.currentPipelineAgents || [];
             const doneAgents = new Set();
             const activeAgent = logs.length ? logs[logs.length - 1].agent : null;
 
