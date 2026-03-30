@@ -1,9 +1,13 @@
 <?php
 defined( 'ABSPATH' ) || exit;
 
+global $wpdb;
 $categories     = get_categories( [ 'hide_empty' => false ] );
 $voice_profiles = \AICA\Settings::get_voice_profiles();
 $api_configured = ! empty( \AICA\Settings::get_api_key() );
+$pipelines      = $wpdb->get_results(
+    "SELECT id, name, description FROM {$wpdb->prefix}aica_pipelines ORDER BY name ASC"
+) ?: [];
 ?>
 <div class="wrap aica-wrap">
     <div class="aica-header">
@@ -40,6 +44,23 @@ $api_configured = ! empty( \AICA\Settings::get_api_key() );
                     <input type="text" id="aica-keywords" name="keywords"
                         placeholder="z.B. Produktivität Homeoffice, Remote Work Tipps, Konzentration steigern"
                         class="large-text aica-input">
+                </div>
+
+                <div class="aica-form-group">
+                    <label for="aica-pipeline" class="aica-label">
+                        Pipeline <span class="aica-hint">Wähle die Agenten-Pipeline für die Generierung</span>
+                    </label>
+                    <select id="aica-pipeline" name="pipeline_id" class="aica-select">
+                        <option value="0">— Standard-Pipeline (alle Agenten) —</option>
+                        <?php foreach ( $pipelines as $pipeline ) : ?>
+                        <option value="<?php echo esc_attr( $pipeline->id ); ?>">
+                            <?php echo esc_html( $pipeline->name ); ?>
+                            <?php if ( $pipeline->description ) : ?>
+                                (<?php echo esc_html( $pipeline->description ); ?>)
+                            <?php endif; ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
 
                 <div class="aica-form-row">
