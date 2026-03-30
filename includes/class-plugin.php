@@ -489,19 +489,22 @@ class Plugin {
             }
         }
 
-        // Capabilities sanitieren
-        $web_search_enabled = ! empty( $_POST['cap_web_search'] );
-        $web_urls_raw       = sanitize_textarea_field( wp_unslash( $_POST['cap_web_urls'] ?? '' ) );
-        $web_urls           = array_values( array_filter( array_map( 'trim', explode( "\n", $web_urls_raw ) ) ) );
-        $coding_enabled     = ! empty( $_POST['cap_coding'] );
+        // Capabilities: JS sendet als JSON-String
+        $caps_raw     = wp_unslash( $_POST['capabilities'] ?? '{}' );
+        $caps_decoded = json_decode( $caps_raw, true );
 
-        $capabilities = wp_json_encode( [
-            'web_search' => [
-                'enabled' => $web_search_enabled,
-                'urls'    => $web_urls,
-            ],
-            'coding' => $coding_enabled,
-        ] );
+        if ( ! is_array( $caps_decoded ) ) {
+            $caps_decoded = [];
+        }
+
+        // URLs in capabilities bereinigen
+        if ( ! empty( $caps_decoded['web_search']['urls'] ) && is_array( $caps_decoded['web_search']['urls'] ) ) {
+            $caps_decoded['web_search']['urls'] = array_values(
+                array_filter( array_map( 'esc_url_raw', $caps_decoded['web_search']['urls'] ) )
+            );
+        }
+
+        $capabilities = wp_json_encode( $caps_decoded );
 
         $data = [
             'name'          => sanitize_text_field( wp_unslash( $_POST['name'] ?? '' ) ),
@@ -516,11 +519,15 @@ class Plugin {
         ];
 
         if ( $agent_id ) {
-            $wpdb->update( $table, $data, [ 'id' => $agent_id ], null, [ '%d' ] );
+            $result = $wpdb->update( $table, $data, [ 'id' => $agent_id ], null, [ '%d' ] );
         } else {
             $data['agent_key'] = $agent_key;
-            $wpdb->insert( $table, $data );
+            $result   = $wpdb->insert( $table, $data );
             $agent_id = (int) $wpdb->insert_id;
+        }
+
+        if ( $result === false || ( ! $agent_id && empty( $_POST['agent_id'] ) ) ) {
+            wp_send_json_error( [ 'message' => 'Datenbankfehler: ' . $wpdb->last_error ] );
         }
 
         wp_send_json_success( [ 'agent_id' => $agent_id ] );
