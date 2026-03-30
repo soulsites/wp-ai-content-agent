@@ -64,8 +64,9 @@ class Plugin {
         add_action( 'wp_ajax_aica_save_pipeline',    [ $this, 'ajax_save_pipeline' ] );
         add_action( 'wp_ajax_aica_delete_pipeline',  [ $this, 'ajax_delete_pipeline' ] );
         add_action( 'wp_ajax_aica_get_pipelines',    [ $this, 'ajax_get_pipelines' ] );
-        add_action( 'wp_ajax_aica_save_agent',       [ $this, 'ajax_save_agent' ] );
-        add_action( 'wp_ajax_aica_delete_agent',     [ $this, 'ajax_delete_agent' ] );
+        add_action( 'wp_ajax_aica_save_agent',                  [ $this, 'ajax_save_agent' ] );
+        add_action( 'wp_ajax_aica_delete_agent',                [ $this, 'ajax_delete_agent' ] );
+        add_action( 'wp_ajax_aica_save_builtin_agent_settings', [ $this, 'ajax_save_builtin_agent_settings' ] );
     }
 
     public function ajax_generate_content(): void {
@@ -334,7 +335,10 @@ class Plugin {
             wp_send_json_error( [ 'message' => 'Ungültige Steps.' ] );
         }
 
-        $valid_agents    = [ 'content_analyzer', 'audience_analyzer', 'keyword_researcher', 'researcher', 'content_writer' ];
+        // Builtin + alle custom agents aus DB als gültig einstufen
+        $builtin_agents   = [ 'content_analyzer', 'audience_analyzer', 'keyword_researcher', 'researcher', 'content_writer' ];
+        $custom_agent_keys = $wpdb->get_col( "SELECT agent_key FROM {$wpdb->prefix}aica_agents" ) ?: [];
+        $valid_agents    = array_merge( $builtin_agents, $custom_agent_keys );
         $valid_operators = [ 'contains', 'not_contains', 'length_gt', 'length_lt' ];
         $valid_actions   = [ 'continue', 'skip', 'stop' ];
 
@@ -531,6 +535,32 @@ class Plugin {
         }
 
         wp_send_json_success( [ 'agent_id' => $agent_id ] );
+    }
+
+    public function ajax_save_builtin_agent_settings(): void {
+        check_ajax_referer( 'aica_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( [], 403 );
+        }
+
+        $valid_keys = [ 'content_analyzer', 'audience_analyzer', 'keyword_researcher', 'researcher', 'content_writer' ];
+        $agent_key  = sanitize_key( wp_unslash( $_POST['agent_key'] ?? '' ) );
+
+        if ( ! in_array( $agent_key, $valid_keys, true ) ) {
+            wp_send_json_error( [ 'message' => 'Ungültiger Agent-Key.' ] );
+        }
+
+        $settings               = Settings::get_all_agent_settings();
+        $settings[ $agent_key ] = [
+            'model'         => sanitize_key( $_POST['model'] ?? Settings::get_model() ),
+            'max_tokens'    => min( 50000, max( 100, absint( $_POST['max_tokens'] ?? 2000 ) ) ),
+            'temperature'   => min( 1.0, max( 0.0, (float) ( $_POST['temperature'] ?? 0.5 ) ) ),
+            'system_prompt' => sanitize_textarea_field( wp_unslash( $_POST['system_prompt'] ?? '' ) ),
+        ];
+
+        update_option( 'aica_agent_settings', $settings );
+        wp_send_json_success( [ 'message' => 'Einstellungen gespeichert.' ] );
     }
 
     public function ajax_delete_agent(): void {

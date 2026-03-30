@@ -596,6 +596,7 @@
             $(document).on('click', '.aica-palette-item',    (e) => this.addStep($(e.currentTarget).data('agent')));
             $(document).on('click', '.aica-edit-pipeline',   (e) => this.editPipeline($(e.currentTarget).data('id')));
             $(document).on('click', '.aica-delete-pipeline', (e) => this.deletePipeline($(e.currentTarget).data('id')));
+            $(document).on('click', '.aica-pipeline-template', (e) => this.openFromTemplate(e.currentTarget));
             $(document).on('click', '.aica-remove-step',     (e) => this.removeStep($(e.currentTarget).closest('.aica-pipeline-step-item').data('step-id')));
             $(document).on('click', '.aica-add-condition-btn', (e) => this.addCondition($(e.currentTarget).closest('.aica-pipeline-step-item').data('step-id')));
             $(document).on('click', '.aica-remove-condition',  (e) => $(e.currentTarget).closest('.aica-condition-row').remove());
@@ -782,9 +783,6 @@
             const steps = this.collectSteps();
             if (!steps.length) { alert('Bitte mindestens einen Agenten hinzufügen.'); return; }
 
-            const hasWriter = steps.some(s => s.agent === 'content_writer' && s.enabled);
-            if (!hasWriter) { alert('Die Pipeline muss einen aktivierten Content-Autor-Schritt enthalten.'); return; }
-
             const $btn = $('#aica-save-pipeline').prop('disabled', true).text('💾 ' + I18N.saving);
 
             $.ajax({
@@ -816,6 +814,23 @@
                     if (resp.success) $(`#aica-pipeline-row-${id}`).fadeOut(400, function(){ $(this).remove(); });
                 },
             });
+        },
+
+        openFromTemplate(el) {
+            const name        = $(el).data('name') || 'Neue Pipeline';
+            const description = $(el).data('description') || '';
+            let   rawSteps    = [];
+            try { rawSteps = JSON.parse($(el).attr('data-steps') || '[]'); } catch(e) {}
+
+            // Step-IDs generieren
+            const steps = rawSteps.map(s => ({
+                id:         'step_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+                agent:      s.agent,
+                enabled:    s.enabled !== false,
+                conditions: [],
+            }));
+
+            this.openBuilder({ id: 0, name, description, steps });
         },
 
         escHtml(str) {
@@ -947,6 +962,68 @@
     };
 
     /* ============================================================
+       Builtin Agent Manager (Einstellungen für Standard-Agenten)
+    ============================================================ */
+    const BuiltinAgentManager = {
+
+        init() {
+            $(document).on('click', '.aica-edit-builtin-agent', (e) => {
+                const key  = $(e.currentTarget).data('key');
+                const name = $(e.currentTarget).data('name');
+                this.openModal(key, name);
+            });
+            $(document).on('click', '#aica-builtin-agent-modal .aica-modal-close, #aica-builtin-agent-modal .aica-modal-backdrop', () => this.closeModal());
+            $(document).on('click', '#aica-save-builtin-agent', () => this.saveSettings());
+        },
+
+        openModal(agentKey, agentName) {
+            const settings = (aicaData.agentSettings && aicaData.agentSettings[agentKey]) || {};
+
+            $('#aica-builtin-agent-modal-title').text('Einstellungen: ' + (agentName || agentKey));
+            $('#aica-builtin-agent-key').val(agentKey);
+            $('#aica-builtin-agent-model').val(settings.model || aicaData.defaultModel || 'claude-opus-4-6');
+            $('#aica-builtin-agent-max-tokens').val(settings.max_tokens || 2000);
+            $('#aica-builtin-agent-temperature').val(settings.temperature || 0.5);
+            $('#aica-builtin-agent-system-prompt').val(settings.system_prompt || '');
+
+            $('#aica-builtin-agent-modal').show();
+        },
+
+        closeModal() {
+            $('#aica-builtin-agent-modal').hide();
+        },
+
+        saveSettings() {
+            const $btn = $('#aica-save-builtin-agent').prop('disabled', true).text('💾 ' + I18N.saving);
+
+            $.ajax({
+                url:    AJAX_URL,
+                method: 'POST',
+                data: {
+                    action:        'aica_save_builtin_agent_settings',
+                    nonce:          NONCE,
+                    agent_key:     $('#aica-builtin-agent-key').val(),
+                    model:         $('#aica-builtin-agent-model').val(),
+                    max_tokens:    $('#aica-builtin-agent-max-tokens').val(),
+                    temperature:   $('#aica-builtin-agent-temperature').val(),
+                    system_prompt: $('#aica-builtin-agent-system-prompt').val(),
+                },
+                success: (resp) => {
+                    if (resp.success) {
+                        this.closeModal();
+                        const $notice = $('<div class="notice notice-success is-dismissible"><p>✅ Einstellungen gespeichert!</p></div>');
+                        $('.aica-header').after($notice);
+                        setTimeout(() => $notice.slideUp(300, function(){ $(this).remove(); }), 2500);
+                    } else {
+                        alert(resp.data?.message || I18N.error);
+                    }
+                },
+                complete: () => $btn.prop('disabled', false).text('💾 Speichern'),
+            });
+        },
+    };
+
+    /* ============================================================
        Reset Data
     ============================================================ */
     $('#aica-reset-data').on('click', function() {
@@ -967,6 +1044,7 @@
         ContentDetails.init();
         PipelineBuilder.init();
         AgentManager.init();
+        BuiltinAgentManager.init();
 
         // Modal-Backdrop close
         $(document).on('click', '.aica-modal-backdrop', function() {

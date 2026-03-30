@@ -32,17 +32,99 @@ foreach ( $all_agents as $a ) {
         $source_options[ $a['result_key'] ] = $a['name'] . ' (' . $a['result_key'] . ')';
     }
 }
+
+// Beispiel-Pipeline-Templates
+$pipeline_templates = [
+    [
+        'id'          => 'tpl_full',
+        'name'        => 'Standard SEO-Pipeline',
+        'description' => 'Vollständige Analyse + Keyword-Recherche + Schreiben',
+        'steps'       => [
+            [ 'agent' => 'content_analyzer',   'enabled' => true ],
+            [ 'agent' => 'audience_analyzer',  'enabled' => true ],
+            [ 'agent' => 'keyword_researcher', 'enabled' => true ],
+            [ 'agent' => 'researcher',         'enabled' => true ],
+            [ 'agent' => 'content_writer',     'enabled' => true ],
+        ],
+    ],
+    [
+        'id'          => 'tpl_express',
+        'name'        => 'Express-Pipeline',
+        'description' => 'Schnelle Inhaltserstellung ohne tiefe Analyse',
+        'steps'       => [
+            [ 'agent' => 'content_analyzer', 'enabled' => true ],
+            [ 'agent' => 'content_writer',   'enabled' => true ],
+        ],
+    ],
+    [
+        'id'          => 'tpl_research',
+        'name'        => 'Research & Write',
+        'description' => 'Tiefe Recherche mit Zielgruppenanalyse',
+        'steps'       => [
+            [ 'agent' => 'audience_analyzer', 'enabled' => true ],
+            [ 'agent' => 'researcher',        'enabled' => true ],
+            [ 'agent' => 'content_writer',    'enabled' => true ],
+        ],
+    ],
+    [
+        'id'          => 'tpl_seo',
+        'name'        => 'SEO-fokussiert',
+        'description' => 'Keyword-Strategie im Mittelpunkt',
+        'steps'       => [
+            [ 'agent' => 'content_analyzer',   'enabled' => true ],
+            [ 'agent' => 'keyword_researcher', 'enabled' => true ],
+            [ 'agent' => 'content_writer',     'enabled' => true ],
+        ],
+    ],
+];
 ?>
 <div class="wrap aica-wrap">
     <div class="aica-header">
         <h1>🔀 Pipelines</h1>
-        <p class="aica-header-sub">Erstelle eigene Agenten-Pipelines per Drag &amp; Drop und verwende sie in Automatisierungs-Jobs.</p>
+        <p class="aica-header-sub">Baue eigene Agenten-Pipelines per Drag &amp; Drop und verwende sie in Automatisierungs-Jobs.</p>
     </div>
 
-    <!-- Bestehende Pipelines -->
+    <!-- ====================================================
+         Beispiel-Pipelines
+    ==================================================== -->
+    <div class="aica-card" id="aica-pipeline-templates-card">
+        <h2 class="aica-card-title" style="margin-bottom:4px;">Schnellstart: Beispiel-Pipelines</h2>
+        <p style="margin:0 0 16px;font-size:13px;color:var(--aica-text-muted);">
+            Klicke auf eine Vorlage um sie im Builder zu öffnen und anzupassen.
+        </p>
+        <div class="aica-pipeline-templates-grid">
+            <?php foreach ( $pipeline_templates as $tpl ) : ?>
+            <button type="button"
+                    class="aica-pipeline-template"
+                    data-name="<?php echo esc_attr( $tpl['name'] ); ?>"
+                    data-description="<?php echo esc_attr( $tpl['description'] ); ?>"
+                    data-steps="<?php echo esc_attr( wp_json_encode( $tpl['steps'] ) ); ?>">
+                <div class="aica-pipeline-template-name"><?php echo esc_html( $tpl['name'] ); ?></div>
+                <div class="aica-pipeline-template-desc"><?php echo esc_html( $tpl['description'] ); ?></div>
+                <div class="aica-pipeline-template-steps">
+                    <?php
+                    $step_icons = array_column( $tpl['steps'], 'agent' );
+                    foreach ( $step_icons as $i => $akey ) :
+                        $info = $agent_info[ $akey ] ?? null;
+                        if ( ! $info ) continue;
+                    ?>
+                    <?php if ( $i > 0 ) : ?><span class="aica-pipeline-template-arrow">→</span><?php endif; ?>
+                    <span class="aica-pipeline-template-step" title="<?php echo esc_attr( $info['name'] ); ?>">
+                        <?php echo esc_html( $info['icon'] ); ?>
+                    </span>
+                    <?php endforeach; ?>
+                </div>
+            </button>
+            <?php endforeach; ?>
+        </div>
+    </div>
+
+    <!-- ====================================================
+         Gespeicherte Pipelines
+    ==================================================== -->
     <div class="aica-card" id="aica-pipeline-list-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-            <h2 class="aica-card-title" style="margin-bottom:0;">Gespeicherte Pipelines</h2>
+            <h2 class="aica-card-title" style="margin-bottom:0;">Meine Pipelines</h2>
             <button type="button" id="aica-new-pipeline-btn" class="aica-btn aica-btn-primary">
                 ➕ Neue Pipeline
             </button>
@@ -51,7 +133,7 @@ foreach ( $all_agents as $a ) {
         <?php if ( empty( $pipelines ) ) : ?>
         <div class="aica-empty-state" style="text-align:center;padding:32px 0;color:var(--aica-text-muted);">
             <p style="font-size:32px;margin-bottom:8px;">🔀</p>
-            <p>Noch keine Pipelines erstellt. Klicke auf „Neue Pipeline" um loszulegen.</p>
+            <p>Noch keine eigenen Pipelines. Wähle eine Vorlage oben oder klicke auf „Neue Pipeline".</p>
         </div>
         <?php else : ?>
         <table class="aica-table aica-table-full">
@@ -72,18 +154,19 @@ foreach ( $all_agents as $a ) {
                     <td><strong><?php echo esc_html( $pipeline->name ); ?></strong></td>
                     <td><?php echo esc_html( $pipeline->description ?: '—' ); ?></td>
                     <td>
-                        <div style="display:flex;gap:4px;flex-wrap:wrap;">
-                            <?php foreach ( $steps as $step ) :
+                        <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">
+                            <?php foreach ( $steps as $i => $step ) :
                                 $info    = $agent_info[ $step['agent'] ] ?? null;
                                 $enabled = $step['enabled'] ?? true;
                                 if ( ! $info ) continue;
                             ?>
+                            <?php if ( $i > 0 ) : ?><span style="color:var(--aica-text-muted);font-size:11px;">→</span><?php endif; ?>
                             <span title="<?php echo esc_attr( $info['name'] ); ?>"
-                                  style="opacity:<?php echo $enabled ? '1' : '.4'; ?>">
+                                  style="opacity:<?php echo $enabled ? '1' : '.4'; ?>;font-size:16px;">
                                 <?php echo esc_html( $info['icon'] ); ?>
                             </span>
                             <?php endforeach; ?>
-                            <span style="color:var(--aica-text-muted);font-size:12px;">(<?php echo count( $steps ); ?>)</span>
+                            <span style="color:var(--aica-text-muted);font-size:11px;">(<?php echo count( $steps ); ?>)</span>
                         </div>
                     </td>
                     <td><?php echo esc_html( wp_date( 'd.m.Y', strtotime( $pipeline->created_at ) ) ); ?></td>
@@ -106,7 +189,9 @@ foreach ( $all_agents as $a ) {
         <?php endif; ?>
     </div>
 
-    <!-- Pipeline Builder (initial versteckt) -->
+    <!-- ====================================================
+         Pipeline Builder (initial versteckt)
+    ==================================================== -->
     <div id="aica-pipeline-builder" class="aica-card" style="display:none;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
             <h2 class="aica-card-title" style="margin-bottom:0;" id="aica-builder-title">Neue Pipeline</h2>
