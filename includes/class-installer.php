@@ -14,7 +14,7 @@ class Installer {
     const TABLE_LOGS      = 'aica_logs';
     const TABLE_PIPELINES = 'aica_pipelines';
     const TABLE_AGENTS    = 'aica_agents';
-    const DB_VERSION      = '1.2.0';
+    const DB_VERSION      = '1.2.1';
 
     /**
      * Prüft ob das DB-Schema aktuell ist und führt ggf. ein Upgrade durch.
