@@ -74,6 +74,7 @@
                     nonce:        NONCE,
                     topic:        topic,
                     keywords:     $('#aica-keywords').val(),
+                    pipeline_id:  $('#aica-pipeline').val(),
                     voice_id:     $('#aica-voice').val(),
                     post_status:  $('#aica-post-status').val(),
                     category_id:  $('#aica-category').val(),

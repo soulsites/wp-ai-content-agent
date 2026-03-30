@@ -26,6 +26,7 @@ class Orchestrator {
         $data = [
             'topic'       => sanitize_textarea_field( $params['topic']    ?? '' ),
             'keywords'    => sanitize_text_field( $params['keywords']     ?? '' ),
+            'pipeline_id' => absint( $params['pipeline_id'] ?? 0 ) ?: null,
             'voice_id'    => absint( $params['voice_id']    ?? 0 ) ?: null,
             'post_status' => sanitize_key( $params['post_status'] ?? 'draft' ),
             'category_id' => absint( $params['category_id'] ?? 0 ) ?: null,
