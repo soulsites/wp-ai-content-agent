@@ -127,13 +127,15 @@ class Admin {
         }, $custom_agents_raw );
 
         wp_localize_script( 'aica-admin', 'aicaData', [
-            'nonce'     => wp_create_nonce( 'aica_nonce' ),
-            'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
-            'adminUrl'  => admin_url( 'admin.php' ),
-            'pipelines' => $pipelines,
-            'agents'    => array_merge( $builtin_agents, array_values( $custom_agents ) ),
-            'models'    => \AICA\Settings::get_available_models(),
-            'i18n'      => [
+            'nonce'          => wp_create_nonce( 'aica_nonce' ),
+            'ajaxUrl'        => admin_url( 'admin-ajax.php' ),
+            'adminUrl'       => admin_url( 'admin.php' ),
+            'pipelines'      => $pipelines,
+            'agents'         => array_merge( $builtin_agents, array_values( $custom_agents ) ),
+            'agentSettings'  => \AICA\Settings::get_all_agent_settings(),
+            'defaultModel'   => \AICA\Settings::get_model(),
+            'models'         => \AICA\Settings::get_available_models(),
+            'i18n'           => [
                 'generating'   => 'Generierung läuft...',
                 'done'         => 'Abgeschlossen!',
                 'error'        => 'Fehler aufgetreten.',
