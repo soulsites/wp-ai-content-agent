@@ -193,7 +193,7 @@
             const $log = $('#aica-log-entries');
             const newLogs = logs.slice(this.lastLogCount);
 
-            newLogs.forEach(log => {
+            newLogs.forEach((log, idx) => {
                 const time = log.created_at ? log.created_at.slice(11, 19) : '';
                 const agentInfo = this.agentInfo[log.agent] || { icon: '❓', name: log.agent };
 
@@ -215,16 +215,64 @@
                     className = 'system';
                 }
 
+                // Parse Log-Daten wenn vorhanden
+                let logData = null;
+                try {
+                    if (log.data && typeof log.data === 'string') {
+                        logData = JSON.parse(log.data);
+                    } else if (log.data && typeof log.data === 'object') {
+                        logData = log.data;
+                    }
+                } catch (e) {}
+
+                const logId = `log-${this.lastLogCount + idx}`;
+                let detailsHtml = '';
+                let expandBtn = '';
+
+                // Wenn Daten vorhanden sind, zeige expandierbaren Button
+                if (logData) {
+                    expandBtn = `<button class="aica-log-expand" data-toggle="${logId}-details" style="background:none;border:none;cursor:pointer;color:inherit;padding:0;margin-left:6px;">▼</button>`;
+
+                    let dataContent = '';
+                    if (logData.response_preview) {
+                        dataContent += `<div class="aica-log-data-item"><strong>KI-Response (Vorschau):</strong><pre>${$('<div>').text(logData.response_preview).html()}</pre></div>`;
+                    }
+                    if (logData.tokens_input || logData.tokens_output) {
+                        dataContent += `<div class="aica-log-data-item"><strong>Tokens:</strong> Input: ${logData.tokens_input}, Output: ${logData.tokens_output}</div>`;
+                    }
+                    if (logData.model) {
+                        dataContent += `<div class="aica-log-data-item"><strong>Modell:</strong> ${logData.model}</div>`;
+                    }
+
+                    detailsHtml = `
+                        <div class="aica-log-details" id="${logId}-details" style="display:none;margin-top:8px;padding:8px;background:rgba(255,255,255,.05);border-radius:4px;border-left:2px solid #666;">
+                            ${dataContent}
+                        </div>
+                    `;
+                }
+
                 const html = `
-                    <div class="aica-log-entry ${className}">
+                    <div class="aica-log-entry ${className}" id="${logId}">
                         <div class="aica-log-meta">
                             <span class="aica-log-time">${time}</span>
                             <span class="aica-log-agent">${agentInfo.icon} ${this.getAgentDisplayName(log.agent)}</span>
+                            ${expandBtn}
                         </div>
                         <div class="aica-log-message">${icon} ${$('<span>').text(log.message).html()}</div>
+                        ${detailsHtml}
                     </div>
                 `;
                 $log.append(html);
+
+                // Toggle-Handler für expandierbare Details
+                if (expandBtn) {
+                    $log.find(`[data-toggle="${logId}-details"]`).on('click', function(e) {
+                        e.preventDefault();
+                        const $details = $(`#${logId}-details`);
+                        $details.slideToggle(200);
+                        $(this).text($details.is(':visible') ? '▼' : '▶');
+                    });
+                }
             });
 
             $log.scrollTop($log[0].scrollHeight);

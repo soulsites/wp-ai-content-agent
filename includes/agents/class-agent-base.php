@@ -98,9 +98,16 @@ abstract class Agent_Base {
                 + (int) ( $result['usage']['output_tokens'] ?? 0 );
         $this->total_tokens += $used;
 
-        $this->log( 'info', "Abgeschlossen. Tokens: {$used}" );
+        // Log AI-Response mit Details
+        $response_text = $result['text'];
+        $this->log( 'info', "Abgeschlossen. Tokens: {$used}", [
+            'response_preview' => mb_substr( $response_text, 0, 500 ),
+            'tokens_input'     => (int) ( $result['usage']['input_tokens'] ?? 0 ),
+            'tokens_output'    => (int) ( $result['usage']['output_tokens'] ?? 0 ),
+            'model'            => $params['model'] ?? '',
+        ] );
 
-        return $result['text'];
+        return $response_text;
     }
 
     /**

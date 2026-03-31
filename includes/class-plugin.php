@@ -146,7 +146,7 @@ class Plugin {
         }
 
         $logs = $wpdb->get_results( $wpdb->prepare(
-            "SELECT agent, level, message, created_at FROM {$wpdb->prefix}aica_logs WHERE content_id = %d ORDER BY id ASC",
+            "SELECT agent, level, message, data, created_at FROM {$wpdb->prefix}aica_logs WHERE content_id = %d ORDER BY id ASC",
             $content_id
         ) );
 
