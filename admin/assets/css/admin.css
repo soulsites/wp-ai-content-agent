@@ -650,3 +650,191 @@ input:checked + .aica-step-toggle .aica-toggle-slider::before { transform: trans
 }
 .aica-pipeline-template-step { font-size: 16px; }
 .aica-pipeline-template-arrow { font-size: 11px; color: var(--aica-text-muted); }
+
+/* ============================================================
+   Usage & Kosten Dashboard
+============================================================ */
+
+/* Balance-Karten-Reihe */
+.aica-usage-balance-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.aica-balance-card {
+    background: var(--aica-card-bg);
+    border: 1px solid var(--aica-border);
+    border-radius: var(--aica-radius);
+    padding: 20px;
+    box-shadow: var(--aica-shadow);
+}
+
+.aica-balance-ok   { border-top: 3px solid var(--aica-secondary); }
+.aica-balance-na   { border-top: 3px solid var(--aica-text-muted); }
+
+.aica-balance-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: var(--aica-text-muted);
+    font-weight: 600;
+}
+
+.aica-balance-icon  { font-size: 18px; }
+.aica-balance-title { flex: 1; }
+
+.aica-balance-badge {
+    font-size: 10px;
+    font-weight: 700;
+    background: var(--aica-secondary);
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 10px;
+}
+
+.aica-balance-amount {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--aica-primary);
+    line-height: 1.2;
+    margin-bottom: 4px;
+    word-break: break-all;
+}
+
+.aica-balance-model { font-size: 16px; }
+
+.aica-balance-sub {
+    font-size: 12px;
+    color: var(--aica-text-muted);
+    line-height: 1.5;
+}
+
+.aica-balance-sub a { color: var(--aica-primary); }
+
+/* Fortschrittsbalken für Guthaben */
+.aica-balance-bar {
+    background: #e9ecef;
+    border-radius: 4px;
+    height: 6px;
+    margin: 10px 0 4px;
+    overflow: hidden;
+}
+
+.aica-balance-fill {
+    height: 100%;
+    background: var(--aica-secondary);
+    border-radius: 4px;
+    transition: width .5s ease;
+}
+
+.aica-balance-pct {
+    font-size: 11px;
+    color: var(--aica-text-muted);
+}
+
+/* Filter-Leiste */
+.aica-usage-filters { padding: 16px 24px; margin-bottom: 20px; }
+
+.aica-filters-inner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: flex-end;
+}
+
+.aica-filter-group { display: flex; flex-direction: column; gap: 6px; }
+
+.aica-filter-note {
+    font-size: 12px;
+    color: var(--aica-text-muted);
+    margin-top: auto;
+    padding-bottom: 2px;
+}
+
+/* Perioden-Buttons */
+.aica-period-btns { display: flex; gap: 4px; }
+
+.aica-period-btn {
+    padding: 6px 14px;
+    border: 1px solid var(--aica-border);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--aica-text);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all .15s;
+}
+
+.aica-period-btn:hover { border-color: var(--aica-primary); color: var(--aica-primary); }
+.aica-period-btn.active { background: var(--aica-primary); border-color: var(--aica-primary); color: #fff; }
+
+/* Chart Header */
+.aica-chart-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.aica-chart-header .aica-card-title { margin-bottom: 0; }
+
+.aica-chart-summary-inline {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.aica-summary-chip {
+    font-size: 13px;
+    background: #f0eeff;
+    border: 1px solid #d8d4f8;
+    border-radius: 20px;
+    padding: 4px 12px;
+    color: var(--aica-text);
+}
+
+.aica-chip-cost { background: #e8faf4; border-color: #b7e4d0; }
+
+/* Chart-Container */
+.aica-chart-container {
+    position: relative;
+    height: 300px;
+}
+
+.aica-chart-sm { height: 220px; }
+
+/* Preistabelle */
+.aica-row-active td { background: #f9f8ff; }
+
+.aica-badge-active {
+    display: inline-block;
+    margin-left: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    background: var(--aica-primary);
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 10px;
+    vertical-align: middle;
+}
+
+.aica-table-note {
+    font-size: 12px;
+    color: var(--aica-text-muted);
+    margin-top: 10px;
+}
+
+@media (max-width: 900px) {
+    .aica-usage-balance-row { grid-template-columns: 1fr 1fr; }
+    .aica-filters-inner { gap: 12px; }
+}
+
+@media (max-width: 600px) {
+    .aica-usage-balance-row { grid-template-columns: 1fr; }
+}

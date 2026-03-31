@@ -48,6 +48,7 @@ class Admin {
         add_submenu_page( 'aica', 'Voice Profile',         'Voice Profile',         'manage_options',  'aica-voices',        [ $this, 'page_voices' ] );
         add_submenu_page( 'aica', 'Pipelines',              'Pipelines',             'manage_options',  'aica-pipelines',     [ $this, 'page_pipelines' ] );
         add_submenu_page( 'aica', 'Agenten',               'Agenten',               'manage_options',  'aica-agents',        [ $this, 'page_agents' ] );
+        add_submenu_page( 'aica', 'Usage & Kosten',          'Usage & Kosten',        'manage_options',  'aica-usage',         [ $this, 'page_usage' ] );
         add_submenu_page( 'aica', 'Einstellungen',         'Einstellungen',         'manage_options',  'aica-settings',      [ $this, 'page_settings' ] );
     }
 
@@ -173,6 +174,7 @@ class Admin {
     public function page_voices():    void { $this->render( 'voices' );    }
     public function page_pipelines(): void { $this->render( 'pipelines' ); }
     public function page_agents():    void { $this->render( 'agents' );    }
+    public function page_usage():     void { $this->render( 'usage' );     }
     public function page_settings():  void { $this->render( 'settings' );  }
 
     private function render( string $template ): void {
