@@ -898,6 +898,88 @@
 .aica-table-note { font-size: 12px; color: var(--aica-text-subtle); margin-top: var(--aica-s3); }
 
 /* ============================================================
+   Toggle Switch
+============================================================ */
+.aica-toggle {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 22px;
+    flex-shrink: 0;
+}
+.aica-toggle input { opacity: 0; width: 0; height: 0; }
+.aica-toggle-slider {
+    position: absolute;
+    inset: 0;
+    background: var(--aica-outline);
+    border-radius: 22px;
+    cursor: pointer;
+    transition: background .2s;
+}
+.aica-toggle-slider::before {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: 3px;
+    width: 16px;
+    height: 16px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform .2s;
+}
+.aica-toggle input:checked + .aica-toggle-slider { background: var(--aica-primary); }
+.aica-toggle input:checked + .aica-toggle-slider::before { transform: translateX(18px); }
+
+/* ============================================================
+   Capability Cards (Agent-Modal)
+============================================================ */
+.aica-capabilities-section { margin-top: var(--aica-s5); }
+.aica-cap-section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--aica-text-muted);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    margin-bottom: var(--aica-s3);
+}
+.aica-cap-cards { display: flex; flex-direction: column; gap: var(--aica-s3); }
+.aica-cap-card {
+    border: 1px solid var(--aica-outline);
+    border-radius: var(--aica-r-md);
+    padding: var(--aica-s3) var(--aica-s4);
+    background: var(--aica-surface-dim);
+}
+.aica-cap-header {
+    display: flex;
+    align-items: center;
+    gap: var(--aica-s3);
+}
+.aica-cap-info { display: flex; flex-direction: column; gap: 2px; }
+.aica-cap-info strong { font-size: 14px; }
+.aica-cap-desc { font-size: 12px; color: var(--aica-text-muted); }
+.aica-cap-body { margin-top: var(--aica-s3); }
+.aica-cap-badge {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: var(--aica-r-xl);
+    background: var(--aica-primary-lt);
+    color: var(--aica-primary-dk);
+    font-weight: 500;
+}
+
+/* ============================================================
+   Git Repository Settings Rows
+============================================================ */
+.aica-git-repo-row {
+    display: flex;
+    align-items: center;
+    gap: var(--aica-s3);
+    margin-bottom: var(--aica-s3);
+}
+.aica-git-repo-row .aica-input { padding: 6px 10px; }
+
+/* ============================================================
    Responsive
 ============================================================ */
 

@@ -993,9 +993,25 @@
             $(document).on('click', '#aica-save-agent',   () => this.saveAgent());
             $(document).on('click', '#aica-agent-modal .aica-modal-close, #aica-agent-modal .aica-modal-backdrop', () => this.closeModal());
 
-            // Capabilities: Web-Search toggle shows/hides URL body
+            // Capabilities: toggle show/hide bodies
             $(document).on('change', '#aica-cap-web-search', function() {
                 $('#aica-cap-web-body').toggle($(this).prop('checked'));
+            });
+            $(document).on('change', '#aica-cap-git-repo', function() {
+                $('#aica-cap-gitrepo-body').toggle($(this).prop('checked'));
+            });
+
+            // Populate git repo dropdown dynamically from aicaData
+            this.populateGitRepoDropdown();
+        },
+
+        populateGitRepoDropdown() {
+            const $sel = $('#aica-cap-git-repo-index');
+            if (!$sel.length) return;
+            const repos = aicaData.gitRepos || [];
+            $sel.find('option:not([value=""])').remove();
+            repos.forEach((repo, i) => {
+                $sel.append(`<option value="${i}">${$('<span>').text(repo.name).html()} (${$('<span>').text(repo.path).html()})</option>`);
             });
         },
 
@@ -1006,7 +1022,8 @@
             $form[0].reset();
             $('#aica-agent-id').val(0);
             $('#aica-agent-modal-title').text('Neuen Agenten erstellen');
-            $('#aica-cap-web-body').hide();
+            $('#aica-cap-web-body, #aica-cap-gitrepo-body').hide();
+            this.populateGitRepoDropdown();
 
             if (agentId) {
                 const agent = this.agents.find(a => a.id == agentId);
@@ -1032,6 +1049,13 @@
                         $('#aica-cap-web-body').show();
                     }
                     $('#aica-cap-coding').prop('checked', !!caps.coding);
+                    $('#aica-cap-claude-code').prop('checked', !!caps.claude_code);
+                    const gitEnabled = caps.git_repo && caps.git_repo.enabled;
+                    $('#aica-cap-git-repo').prop('checked', !!gitEnabled);
+                    if (gitEnabled) {
+                        $('#aica-cap-git-repo-index').val(caps.git_repo.repo_index ?? '');
+                        $('#aica-cap-gitrepo-body').show();
+                    }
                 }
             }
 
@@ -1068,6 +1092,13 @@
             }
             if ($('#aica-cap-coding').prop('checked')) {
                 caps.coding = true;
+            }
+            if ($('#aica-cap-claude-code').prop('checked')) {
+                caps.claude_code = true;
+            }
+            if ($('#aica-cap-git-repo').prop('checked')) {
+                const repoIndex = $('#aica-cap-git-repo-index').val();
+                caps.git_repo = { enabled: true, repo_index: repoIndex !== '' ? parseInt(repoIndex, 10) : 0 };
             }
 
             const $btn = $('#aica-save-agent').prop('disabled', true).text('💾 ' + I18N.saving);
@@ -1171,6 +1202,49 @@
     });
 
     /* ============================================================
+       Git Repository Settings (Einstellungsseite)
+    ============================================================ */
+    const GitRepoSettings = {
+        rowCount: 0,
+
+        init() {
+            const $list = $('#aica-git-repos-list');
+            if (!$list.length) return;
+
+            this.rowCount = $list.find('.aica-git-repo-row').length;
+
+            $('#aica-add-git-repo').on('click', () => this.addRow());
+            $(document).on('click', '.aica-remove-git-repo', (e) => {
+                $(e.currentTarget).closest('.aica-git-repo-row').remove();
+            });
+
+            // Vor dem Absenden des Formulars JSON-Feld befüllen
+            $('form').on('submit', () => this.serializeToJson());
+        },
+
+        addRow() {
+            const html = `<div class="aica-git-repo-row">
+                <input type="text" class="aica-input aica-git-repo-name" placeholder="Name (z.B. Mein Projekt)" style="flex:1;">
+                <input type="text" class="aica-input aica-git-repo-path" placeholder="Pfad (z.B. /var/www/html/meinprojekt)" style="flex:2;">
+                <button type="button" class="aica-btn aica-btn-danger aica-remove-git-repo" style="flex:0 0 auto;">✕</button>
+            </div>`;
+            $('#aica-git-repos-list').append(html);
+        },
+
+        serializeToJson() {
+            const repos = [];
+            $('#aica-git-repos-list .aica-git-repo-row').each(function() {
+                const name = $(this).find('.aica-git-repo-name').val().trim();
+                const path = $(this).find('.aica-git-repo-path').val().trim();
+                if (name && path) {
+                    repos.push({ name, path });
+                }
+            });
+            $('#aica-git-repos-json').val(JSON.stringify(repos));
+        },
+    };
+
+    /* ============================================================
        Init
     ============================================================ */
     $(document).ready(function() {
@@ -1183,6 +1257,7 @@
         PipelineBuilder.init();
         AgentManager.init();
         BuiltinAgentManager.init();
+        GitRepoSettings.init();
 
         // Modal-Backdrop close
         $(document).on('click', '.aica-modal-backdrop', function() {

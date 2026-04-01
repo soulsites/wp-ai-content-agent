@@ -25,6 +25,8 @@ class Installer {
             self::install();
             self::add_missing_columns();
         }
+        // Standard-Agenten immer sicherstellen (idempotent)
+        self::insert_default_agents();
     }
 
     /**
@@ -199,6 +201,9 @@ class Installer {
 
         // Standardoptionen setzen (nur wenn noch nicht vorhanden)
         self::set_default_options();
+
+        // Standard-Agenten einfügen (nur wenn noch nicht vorhanden)
+        self::insert_default_agents();
     }
 
     public static function deactivate(): void {
@@ -277,6 +282,60 @@ class Installer {
                 'evaluations' => [],
             ],
         ];
+    }
+
+    private static function insert_default_agents(): void {
+        global $wpdb;
+        $table = $wpdb->prefix . self::TABLE_AGENTS;
+
+        // Prüfen ob die Tabelle überhaupt existiert
+        if ( $wpdb->get_var( "SHOW TABLES LIKE '{$table}'" ) !== $table ) {
+            return;
+        }
+
+        $defaults = [
+            [
+                'agent_key'     => 'code_doku_writer',
+                'name'          => 'Code Doku Writer',
+                'icon'          => '📝',
+                'description'   => 'Erstellt automatisch technische Dokumentation für Code-Repositories. Analysiert Quellcode, Klassen und Funktionen und schreibt klare, entwicklerfreundliche Dokumentation.',
+                'system_prompt' => 'Du bist ein erfahrener technischer Redakteur, spezialisiert auf Code-Dokumentation. Deine Aufgabe ist es, aus vorhandenem Quellcode verständliche, vollständige und gut strukturierte technische Dokumentation zu erstellen.
+
+Deine Dokumentation umfasst:
+- Eine Übersicht der Architektur und des Gesamtzwecks des Projekts
+- Beschreibung aller wichtigen Klassen, Module und deren Verantwortlichkeiten
+- Dokumentation wichtiger Funktionen/Methoden mit Parametern, Rückgabewerten und Verwendungsbeispielen
+- Abhängigkeiten und Zusammenspiel der Komponenten
+- Einrichtungs- und Installationshinweise (wenn erkennbar)
+- Codebeispiele für die häufigsten Anwendungsfälle
+
+Halte dich an folgende Prinzipien:
+- Schreibe für Entwickler: präzise, technisch korrekt, ohne unnötigen Fülltext
+- Verwende Markdown-Formatierung: Überschriften (##, ###), Code-Blöcke (```), Listen
+- Erkläre das "Warum" hinter Designentscheidungen, nicht nur das "Was"
+- Weise auf potenzielle Fallstricke oder wichtige Hinweise hin
+- Antworte auf Deutsch, Code-Snippets bleiben in der Originalsprache',
+                'model'         => 'claude-opus-4-6',
+                'max_tokens'    => 8000,
+                'temperature'   => 0.30,
+                'result_key'    => 'documentation_result',
+                'capabilities'  => wp_json_encode( [
+                    'coding'      => true,
+                    'claude_code' => true,
+                ] ),
+            ],
+        ];
+
+        foreach ( $defaults as $agent ) {
+            $exists = $wpdb->get_var( $wpdb->prepare(
+                "SELECT id FROM {$table} WHERE agent_key = %s",
+                $agent['agent_key']
+            ) );
+
+            if ( ! $exists ) {
+                $wpdb->insert( $table, $agent );
+            }
+        }
     }
 
     public static function get_default_agent_settings(): array {
