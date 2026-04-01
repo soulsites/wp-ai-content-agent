@@ -90,7 +90,11 @@ class Pipeline_Runner {
             }
 
             // Alle anderen Agenten: non-fatal
-            $result_key = $this->get_result_key( $agent_key );
+            // Per-Step result_key hat Vorrang vor dem Agenten-Standard
+            $result_key = ! empty( $step['result_key'] )
+                ? sanitize_key( $step['result_key'] )
+                : $this->get_result_key( $agent_key );
+
             if ( ! $result_key ) {
                 $this->log( $content_id, $agent_key, 'warning', "Kein result_key für Agent '{$agent_key}' gefunden." );
                 continue;

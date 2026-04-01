@@ -372,11 +372,14 @@ class Plugin {
                 ];
             }
 
+            $step_result_key = sanitize_key( $step['result_key'] ?? '' );
+
             $clean_steps[] = [
                 'id'         => sanitize_key( $step['id'] ?? uniqid( 'step_' ) ),
                 'agent'      => $agent,
                 'enabled'    => ! empty( $step['enabled'] ),
                 'conditions' => $clean_conditions,
+                'result_key' => $step_result_key ?: null,
             ];
         }
 

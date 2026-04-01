@@ -169,16 +169,18 @@ $pipelines      = $wpdb->get_results(
     <script id="aica-pipelines-generate-data" type="application/json">
     <?php
     $pipelines_json = [];
+    // Steps als Objekte {id, agent, result_key} statt als reine Strings,
+    // damit der Generator doppelte Agenten anhand der Step-ID unterscheiden kann.
     $pipelines_json[0] = [
         'id' => 0,
         'name' => 'Standard-Pipeline',
         'steps' => [
-            'content_analyzer',
-            'audience_analyzer',
-            'keyword_researcher',
-            'researcher',
-            'content_writer'
-        ]
+            [ 'id' => 'std_0', 'agent' => 'content_analyzer',   'result_key' => null ],
+            [ 'id' => 'std_1', 'agent' => 'audience_analyzer',  'result_key' => null ],
+            [ 'id' => 'std_2', 'agent' => 'keyword_researcher', 'result_key' => null ],
+            [ 'id' => 'std_3', 'agent' => 'researcher',         'result_key' => null ],
+            [ 'id' => 'std_4', 'agent' => 'content_writer',     'result_key' => null ],
+        ],
     ];
     foreach ( $pipelines as $p ) {
         $decoded_steps = [];
@@ -188,16 +190,20 @@ $pipelines      = $wpdb->get_results(
         ));
         if ( $wpdb_steps ) {
             $steps_data = json_decode( $wpdb_steps, true ) ?: [];
-            foreach ( $steps_data as $step ) {
+            foreach ( $steps_data as $i => $step ) {
                 if ( isset( $step['agent'] ) ) {
-                    $decoded_steps[] = $step['agent'];
+                    $decoded_steps[] = [
+                        'id'         => $step['id'] ?? ( 'step_' . $i ),
+                        'agent'      => $step['agent'],
+                        'result_key' => $step['result_key'] ?? null,
+                    ];
                 }
             }
         }
         $pipelines_json[ $p->id ] = [
             'id'    => (int) $p->id,
             'name'  => $p->name,
-            'steps' => $decoded_steps ?: [ 'content_writer' ],
+            'steps' => $decoded_steps ?: [ [ 'id' => 'step_0', 'agent' => 'content_writer', 'result_key' => null ] ],
         ];
     }
     echo wp_json_encode( $pipelines_json );
