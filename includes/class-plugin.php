@@ -586,7 +586,7 @@ class Plugin {
 
     /**
      * AJAX: Usage-Daten für das Usage-Dashboard liefern.
-     * Unterstützt Parameter: days (int), model (string).
+     * Unterstützt Parameter: days (int).
      */
     public function ajax_get_usage_data(): void {
         check_ajax_referer( 'aica_nonce', 'nonce' );
@@ -595,15 +595,12 @@ class Plugin {
             wp_send_json_error( [], 403 );
         }
 
-        $days  = min( 365, max( 7, absint( $_GET['days'] ?? 30 ) ) );
-        $model = sanitize_key( $_GET['model'] ?? '' );
+        $days = min( 365, max( 7, absint( $_GET['days'] ?? 30 ) ) );
 
         global $wpdb;
         $table = $wpdb->prefix . 'aica_content';
 
         // Tagesgenaue Aggregation
-        $where_model = $model ? $wpdb->prepare( ' AND model = %s', $model ) : '';
-
         $daily = $wpdb->get_results( $wpdb->prepare(
             "SELECT
                 DATE(created_at)   AS day,
@@ -613,26 +610,18 @@ class Plugin {
              FROM {$table}
              WHERE created_at >= DATE_SUB(NOW(), INTERVAL %d DAY)
                AND status = 'completed'
-               {$where_model}
              GROUP BY DATE(created_at)
              ORDER BY day ASC",
             $days
         ) );
 
-        // Preise für Cost-Schätzung
-        $current_model  = Settings::get_model();
-        $pricing        = API_Client::PRICING[ $current_model ] ?? API_Client::PRICING['claude-sonnet-4-6'];
-        $cost_per_token = ( $pricing['input'] * 0.4 + $pricing['output'] * 0.6 ) / 1_000_000;
-
         $chart_labels   = [];
         $chart_tokens   = [];
-        $chart_costs    = [];
         $chart_articles = [];
 
         foreach ( $daily as $row ) {
             $chart_labels[]   = $row->day;
             $chart_tokens[]   = (int) $row->tokens;
-            $chart_costs[]    = round( (int) $row->tokens * $cost_per_token, 4 );
             $chart_articles[] = (int) $row->articles;
         }
 
@@ -645,30 +634,22 @@ class Plugin {
                 AVG(tokens_used) AS avg_tokens
              FROM {$table}
              WHERE created_at >= DATE_SUB(NOW(), INTERVAL %d DAY)
-               AND status = 'completed'
-               {$where_model}",
+               AND status = 'completed'",
             $days
         ) );
-
-        $total_tokens    = (int) ( $summary->total_tokens ?? 0 );
-        $estimated_cost  = round( $total_tokens * $cost_per_token, 4 );
 
         wp_send_json_success( [
             'chart' => [
                 'labels'   => $chart_labels,
                 'tokens'   => $chart_tokens,
-                'costs'    => $chart_costs,
                 'articles' => $chart_articles,
             ],
             'summary' => [
                 'total_articles' => (int) ( $summary->total_articles ?? 0 ),
-                'total_tokens'   => $total_tokens,
+                'total_tokens'   => (int) ( $summary->total_tokens ?? 0 ),
                 'total_words'    => (int) ( $summary->total_words ?? 0 ),
                 'avg_tokens'     => (int) ( $summary->avg_tokens ?? 0 ),
-                'estimated_cost' => $estimated_cost,
             ],
-            'model'   => $current_model,
-            'pricing' => $pricing,
         ] );
     }
 }

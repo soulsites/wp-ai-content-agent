@@ -12,16 +12,6 @@ class API_Client {
     const API_BASE    = 'https://api.anthropic.com/v1';
     const API_VERSION = '2023-06-01';
 
-    /**
-     * Modellpreise in USD pro 1 Million Tokens (Stand 2025).
-     * Format: [ 'model-id' => [ 'input' => x.xx, 'output' => x.xx ] ]
-     */
-    const PRICING = [
-        'claude-opus-4-6'   => [ 'input' => 5.00,  'output' => 25.00 ],
-        'claude-sonnet-4-6' => [ 'input' => 3.00,  'output' => 15.00 ],
-        'claude-haiku-4-5'  => [ 'input' => 1.00,  'output' =>  5.00 ],
-    ];
-
     private string $api_key;
     private int    $timeout;
 
@@ -146,61 +136,6 @@ class API_Client {
         }
 
         return trim( $text );
-    }
-
-    /**
-     * Schätzt die Kosten für eine gegebene Token-Anzahl in USD.
-     *
-     * @param int    $total_tokens  Gesamte Tokens (Input + Output kombiniert)
-     * @param string $model         Modell-ID
-     * @param float  $input_ratio   Anteil Input-Tokens (Standard: 0.4)
-     * @return float Geschätzte Kosten in USD
-     */
-    public static function estimate_cost( int $total_tokens, string $model, float $input_ratio = 0.4 ): float {
-        $pricing = self::PRICING[ $model ] ?? self::PRICING['claude-sonnet-4-6'];
-        $input   = $total_tokens * $input_ratio;
-        $output  = $total_tokens * ( 1 - $input_ratio );
-        return ( $input * $pricing['input'] + $output * $pricing['output'] ) / 1_000_000;
-    }
-
-    /**
-     * Ruft das Kontoguthaben von der Anthropic API ab.
-     * Gibt ein Array mit 'credits_remaining' (float, USD) zurück,
-     * oder null wenn die API den Endpunkt nicht unterstützt.
-     *
-     * @return array|null
-     */
-    public function get_account_balance(): ?array {
-        if ( empty( $this->api_key ) ) {
-            return null;
-        }
-
-        $response = wp_remote_get(
-            self::API_BASE . '/account',
-            [
-                'timeout' => 15,
-                'headers' => [
-                    'x-api-key'         => $this->api_key,
-                    'anthropic-version' => self::API_VERSION,
-                ],
-            ]
-        );
-
-        if ( is_wp_error( $response ) ) {
-            return null;
-        }
-
-        $status = wp_remote_retrieve_response_code( $response );
-        if ( $status < 200 || $status >= 300 ) {
-            return null;
-        }
-
-        $data = json_decode( wp_remote_retrieve_body( $response ), true );
-        if ( ! is_array( $data ) ) {
-            return null;
-        }
-
-        return $data;
     }
 
     /**

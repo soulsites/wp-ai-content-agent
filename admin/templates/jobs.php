@@ -8,13 +8,13 @@ $schedules      = \AICA\Settings::get_available_schedules();
 ?>
 <div class="wrap aica-wrap">
     <div class="aica-header">
-        <h1>⏰ Automatisierungs-Jobs</h1>
+        <h1>Automatisierungs-Jobs</h1>
         <p class="aica-header-sub">Erstelle und verwalte geplante Content-Generierungen via WP-Cron.</p>
     </div>
 
     <div class="aica-toolbar">
         <button type="button" id="aica-add-job" class="aica-btn aica-btn-primary">
-            ➕ Neuen Job erstellen
+            Neuen Job erstellen
         </button>
     </div>
 
@@ -23,7 +23,7 @@ $schedules      = \AICA\Settings::get_available_schedules();
     <div class="aica-card aica-empty-state">
         <p>Noch keine Jobs erstellt. Automatisierte Content-Generierung via WP-Cron einrichten.</p>
         <button type="button" id="aica-add-job-empty" class="aica-btn aica-btn-primary">
-            ➕ Ersten Job erstellen
+            Ersten Job erstellen
         </button>
     </div>
     <?php else : ?>
@@ -52,7 +52,7 @@ $schedules      = \AICA\Settings::get_available_schedules();
                     </td>
                     <td>
                         <span class="aica-status <?php echo $job->active ? 'aica-status-completed' : 'aica-status-error'; ?>">
-                            <?php echo $job->active ? '✅ Aktiv' : '⏸️ Pausiert'; ?>
+                            <?php echo $job->active ? 'Aktiv' : 'Pausiert'; ?>
                         </span>
                     </td>
                     <td>
@@ -71,17 +71,17 @@ $schedules      = \AICA\Settings::get_available_schedules();
                         <button type="button" class="aica-btn aica-btn-small aica-btn-secondary aica-run-job-now"
                                 data-id="<?php echo esc_attr( $job->id ); ?>"
                                 title="Jetzt ausführen">
-                            ▶️ Jetzt
+                            Jetzt
                         </button>
                         <button type="button" class="aica-btn aica-btn-small aica-btn-secondary aica-edit-job"
                                 data-id="<?php echo esc_attr( $job->id ); ?>"
                                 title="Bearbeiten">
-                            ✏️
+                            
                         </button>
                         <button type="button" class="aica-btn aica-btn-small aica-btn-danger aica-delete-job"
                                 data-id="<?php echo esc_attr( $job->id ); ?>"
                                 title="Löschen">
-                            🗑️
+                            
                         </button>
                     </td>
                 </tr>
@@ -201,7 +201,7 @@ $schedules      = \AICA\Settings::get_available_schedules();
             <div class="aica-modal-footer">
                 <button type="button" class="aica-btn aica-btn-secondary aica-modal-close">Abbrechen</button>
                 <button type="button" id="aica-save-job" class="aica-btn aica-btn-primary">
-                    💾 Job speichern
+                    Job speichern
                 </button>
             </div>
         </div>
