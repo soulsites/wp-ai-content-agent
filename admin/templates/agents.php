@@ -75,10 +75,12 @@ $builtin_agents = [
 
             <!-- Eigene Agenten -->
             <?php foreach ( $custom_agents as $agent ) :
-                $caps       = json_decode( $agent->capabilities ?? '{}', true ) ?: [];
-                $has_web    = ! empty( $caps['web_search']['enabled'] );
-                $has_coding = ! empty( $caps['coding'] );
-                $model_label = $models[ $agent->model ] ?? $agent->model;
+                $caps          = json_decode( $agent->capabilities ?? '{}', true ) ?: [];
+                $has_web       = ! empty( $caps['web_search']['enabled'] );
+                $has_coding    = ! empty( $caps['coding'] );
+                $has_claude    = ! empty( $caps['claude_code'] );
+                $has_gitrepo   = ! empty( $caps['git_repo']['enabled'] );
+                $model_label   = $models[ $agent->model ] ?? $agent->model;
             ?>
             <div class="aica-agent-card" id="aica-agent-row-<?php echo esc_attr( $agent->id ); ?>">
                 <div class="aica-agent-card-head">
@@ -95,8 +97,10 @@ $builtin_agents = [
                 <?php endif; ?>
                 <div class="aica-agent-card-meta">
                     <span><?php echo esc_html( $model_label ); ?></span>
-                    <?php if ( $has_web )    : ?> &nbsp;<span class="aica-cap-badge">🔍 Web</span><?php endif; ?>
-                    <?php if ( $has_coding ) : ?> &nbsp;<span class="aica-cap-badge">💻 Coding</span><?php endif; ?>
+                    <?php if ( $has_web )     : ?> &nbsp;<span class="aica-cap-badge">🔍 Web</span><?php endif; ?>
+                    <?php if ( $has_coding )  : ?> &nbsp;<span class="aica-cap-badge">💻 Coding</span><?php endif; ?>
+                    <?php if ( $has_claude )  : ?> &nbsp;<span class="aica-cap-badge">⚡ Claude Code</span><?php endif; ?>
+                    <?php if ( $has_gitrepo ) : ?> &nbsp;<span class="aica-cap-badge">📂 Git Repo</span><?php endif; ?>
                 </div>
                 <div class="aica-agent-card-actions">
                     <button type="button"
@@ -300,6 +304,49 @@ $builtin_agents = [
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Claude Code -->
+                        <div class="aica-cap-card">
+                            <div class="aica-cap-header">
+                                <label class="aica-toggle">
+                                    <input type="checkbox" id="aica-cap-claude-code">
+                                    <span class="aica-toggle-slider"></span>
+                                </label>
+                                <div class="aica-cap-info">
+                                    <strong>⚡ Claude Code</strong>
+                                    <span class="aica-cap-desc">Optimiert den Agenten für Code-Analyse und technische Dokumentation im Claude-Code-Stil: präzise, strukturiert, mit klaren Erklärungen.</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Git Repository -->
+                        <div class="aica-cap-card" id="aica-cap-gitrepo-card">
+                            <div class="aica-cap-header">
+                                <label class="aica-toggle">
+                                    <input type="checkbox" id="aica-cap-git-repo">
+                                    <span class="aica-toggle-slider"></span>
+                                </label>
+                                <div class="aica-cap-info">
+                                    <strong>📂 Git Repository</strong>
+                                    <span class="aica-cap-desc">Gibt dem Agenten Lesezugriff auf ein konfiguriertes Git-Repository (Dateistruktur + Inhalte als Kontext).</span>
+                                </div>
+                            </div>
+                            <div class="aica-cap-body" id="aica-cap-gitrepo-body" style="display:none;">
+                                <label class="aica-label">Repository auswählen</label>
+                                <select id="aica-cap-git-repo-index" class="aica-select" style="width:100%;">
+                                    <option value="">— Bitte wählen —</option>
+                                    <?php foreach ( \AICA\Settings::get_git_repositories() as $i => $repo ) : ?>
+                                    <option value="<?php echo esc_attr( $i ); ?>"><?php echo esc_html( $repo['name'] ); ?> <span style="color:var(--aica-text-muted);">(<?php echo esc_html( $repo['path'] ); ?>)</span></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <?php if ( empty( \AICA\Settings::get_git_repositories() ) ) : ?>
+                                <p style="font-size:12px;color:var(--aica-text-muted);margin-top:6px;">
+                                    Noch keine Repositories konfiguriert. Bitte zuerst unter <a href="<?php echo esc_url( admin_url( 'admin.php?page=aica-settings' ) ); ?>">Einstellungen → Git Repositories</a> hinzufügen.
+                                </p>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
                         </div><!-- /.aica-cap-cards -->
                     </div>
                 </form>
@@ -317,17 +364,17 @@ $builtin_agents = [
     $agents_js = array_map( function( $a ) {
         $caps = json_decode( $a->capabilities ?? '{}', true ) ?: [];
         return [
-            'id'           => (int) $a->id,
-            'agent_key'    => $a->agent_key,
-            'name'         => $a->name,
-            'icon'         => $a->icon,
-            'description'  => $a->description ?? '',
-            'system_prompt'=> $a->system_prompt ?? '',
-            'model'        => $a->model,
-            'max_tokens'   => (int) $a->max_tokens,
-            'temperature'  => (float) $a->temperature,
-            'result_key'   => $a->result_key,
-            'capabilities' => $caps,
+            'id'            => (int) $a->id,
+            'agent_key'     => $a->agent_key,
+            'name'          => $a->name,
+            'icon'          => $a->icon,
+            'description'   => $a->description ?? '',
+            'system_prompt' => $a->system_prompt ?? '',
+            'model'         => $a->model,
+            'max_tokens'    => (int) $a->max_tokens,
+            'temperature'   => (float) $a->temperature,
+            'result_key'    => $a->result_key,
+            'capabilities'  => $caps,
         ];
     }, $custom_agents );
     echo wp_json_encode( array_values( $agents_js ) );

@@ -74,6 +74,11 @@ class Settings {
         ];
     }
 
+    public static function get_git_repositories(): array {
+        $repos = self::get( 'aica_git_repositories', [] );
+        return is_array( $repos ) ? $repos : [];
+    }
+
     public static function get_available_schedules(): array {
         return [
             'manual'     => 'Manuell',
@@ -115,6 +120,24 @@ class Settings {
         }
 
         self::set( 'aica_agent_settings', $agent_settings );
+
+        // Git Repositories
+        $repos_json = sanitize_text_field( wp_unslash( $data['aica_git_repos_json'] ?? '[]' ) );
+        $repos_raw  = json_decode( $repos_json, true );
+        $repos      = [];
+        if ( is_array( $repos_raw ) ) {
+            foreach ( $repos_raw as $repo ) {
+                $name = sanitize_text_field( wp_unslash( $repo['name'] ?? '' ) );
+                $path = sanitize_text_field( wp_unslash( $repo['path'] ?? '' ) );
+                if ( $name && $path ) {
+                    $realpath = realpath( $path );
+                    if ( $realpath && is_dir( $realpath ) ) {
+                        $repos[] = [ 'name' => $name, 'path' => $realpath ];
+                    }
+                }
+            }
+        }
+        self::set( 'aica_git_repositories', $repos );
 
         // Cache leeren
         self::$cache = [];

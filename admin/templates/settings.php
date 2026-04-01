@@ -129,6 +129,36 @@ $api_key        = \AICA\Settings::get_api_key();
         </div>
     </form>
 
+    <!-- Git Repositories -->
+    <?php $git_repos = \AICA\Settings::get_git_repositories(); ?>
+    <div class="aica-card">
+        <h2 class="aica-card-title">🔗 Git Repositories</h2>
+        <p style="color:var(--aica-text-muted);font-size:13px;margin-top:-8px;margin-bottom:16px;">
+            Verknüpfe lokale Git-Repositories. Agenten mit der Fähigkeit <strong>Git Repository</strong> können darauf zugreifen, um z.B. Dokumentation zu erstellen.
+        </p>
+
+        <div id="aica-git-repos-list">
+            <?php foreach ( $git_repos as $i => $repo ) : ?>
+            <div class="aica-git-repo-row">
+                <input type="text" class="aica-input aica-git-repo-name" placeholder="Name (z.B. Mein Projekt)"
+                       value="<?php echo esc_attr( $repo['name'] ); ?>" style="flex:1;">
+                <input type="text" class="aica-input aica-git-repo-path" placeholder="Pfad (z.B. /var/www/html/meinprojekt)"
+                       value="<?php echo esc_attr( $repo['path'] ); ?>" style="flex:2;">
+                <button type="button" class="aica-btn aica-btn-danger aica-remove-git-repo" style="flex:0 0 auto;">✕</button>
+            </div>
+            <?php endforeach; ?>
+        </div>
+
+        <input type="hidden" name="aica_git_repos_json" id="aica-git-repos-json" value="<?php echo esc_attr( wp_json_encode( $git_repos ) ); ?>">
+
+        <button type="button" id="aica-add-git-repo" class="aica-btn aica-btn-secondary" style="margin-top:12px;">
+            + Repository hinzufügen
+        </button>
+        <p style="font-size:12px;color:var(--aica-text-muted);margin-top:8px;">
+            Der Pfad muss ein auf dem Server zugängliches Verzeichnis sein. Ungültige Pfade werden beim Speichern ignoriert.
+        </p>
+    </div>
+
     <!-- Gefahrenzone -->
     <div class="aica-card aica-card-danger">
         <h2 class="aica-card-title">Daten zurücksetzen</h2>

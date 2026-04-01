@@ -136,6 +136,7 @@ class Admin {
             'agentSettings'  => \AICA\Settings::get_all_agent_settings(),
             'defaultModel'   => \AICA\Settings::get_model(),
             'models'         => \AICA\Settings::get_available_models(),
+            'gitRepos'       => \AICA\Settings::get_git_repositories(),
             'i18n'           => [
                 'generating'   => 'Generierung läuft...',
                 'done'         => 'Abgeschlossen!',
