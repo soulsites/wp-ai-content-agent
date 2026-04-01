@@ -11,16 +11,16 @@ $custom_agents = $wpdb->get_results(
 ) ?: [];
 
 $builtin_agents = [
-    'content_analyzer'   => [ 'icon' => '🔍', 'name' => 'Content-Analyst',    'description' => 'Analysiert das Thema: Suchintention, Content-Lücken, Unique Angles und Struktur-Empfehlungen.' ],
-    'audience_analyzer'  => [ 'icon' => '👥', 'name' => 'Zielgruppenanalyst', 'description' => 'Identifiziert Zielgruppen, Bedürfnisse, Schmerzpunkte und Nutzerfragen.' ],
-    'keyword_researcher' => [ 'icon' => '🔑', 'name' => 'Keyword-Rechercheur', 'description' => 'Erstellt eine vollständige SEO-Keyword-Strategie mit Longtails, LSI-Keywords und Meta-Daten.' ],
-    'researcher'         => [ 'icon' => '📚', 'name' => 'Tiefenrechercheur',   'description' => 'Sammelt Fakten, Statistiken, Expertenmeinungen, Trends und Praxisbeispiele.' ],
-    'content_writer'     => [ 'icon' => '✍️', 'name' => 'Content-Autor',       'description' => 'Schreibt den finalen Artikel mit Voice-Profil, SEO-Optimierung und vollständiger Struktur.' ],
+    'content_analyzer'   => [ 'icon' => 'CA', 'name' => 'Content-Analyst',    'description' => 'Analysiert das Thema: Suchintention, Content-Lücken, Unique Angles und Struktur-Empfehlungen.' ],
+    'audience_analyzer'  => [ 'icon' => 'ZA', 'name' => 'Zielgruppenanalyst', 'description' => 'Identifiziert Zielgruppen, Bedürfnisse, Schmerzpunkte und Nutzerfragen.' ],
+    'keyword_researcher' => [ 'icon' => 'KW', 'name' => 'Keyword-Rechercheur', 'description' => 'Erstellt eine vollständige SEO-Keyword-Strategie mit Longtails, LSI-Keywords und Meta-Daten.' ],
+    'researcher'         => [ 'icon' => 'TR', 'name' => 'Tiefenrechercheur',   'description' => 'Sammelt Fakten, Statistiken, Expertenmeinungen, Trends und Praxisbeispiele.' ],
+    'content_writer'     => [ 'icon' => 'CW', 'name' => 'Content-Autor',       'description' => 'Schreibt den finalen Artikel mit Voice-Profil, SEO-Optimierung und vollständiger Struktur.' ],
 ];
 ?>
 <div class="wrap aica-wrap">
     <div class="aica-header">
-        <h1>🤖 Agenten</h1>
+        <h1>Agenten</h1>
         <p class="aica-header-sub">Verwalte alle Agenten – Standard-Agenten und eigene Agenten. Füge Agenten per Klick zu Pipelines hinzu.</p>
     </div>
 
@@ -32,11 +32,11 @@ $builtin_agents = [
             <div>
                 <h2 class="aica-card-title" style="margin-bottom:2px;">Alle Agenten</h2>
                 <p style="margin:0;font-size:13px;color:var(--aica-text-muted);">
-                    Klicke auf ⚙️ um Einstellungen zu bearbeiten. Agenten werden in Pipelines eingesetzt.
+                    Klicke auf Einstellungen zu bearbeiten. Agenten werden in Pipelines eingesetzt.
                 </p>
             </div>
             <button type="button" id="aica-add-agent-btn" class="aica-btn aica-btn-primary">
-                ➕ Neuen Agenten erstellen
+                Neuen Agenten erstellen
             </button>
         </div>
 
@@ -60,14 +60,14 @@ $builtin_agents = [
                 </div>
                 <p class="aica-agent-card-desc"><?php echo esc_html( $info['description'] ); ?></p>
                 <div class="aica-agent-card-meta">
-                    <span>⚡ <?php echo esc_html( $model_label ); ?></span>
+                    <span><?php echo esc_html( $model_label ); ?></span>
                 </div>
                 <div class="aica-agent-card-actions">
                     <button type="button"
                             class="aica-btn aica-btn-small aica-btn-secondary aica-edit-builtin-agent"
                             data-key="<?php echo esc_attr( $key ); ?>"
                             data-name="<?php echo esc_attr( $info['name'] ); ?>">
-                        ⚙️ Einstellungen
+                        Einstellungen
                     </button>
                 </div>
             </div>
@@ -94,7 +94,7 @@ $builtin_agents = [
                 <p class="aica-agent-card-desc"><?php echo esc_html( $agent->description ); ?></p>
                 <?php endif; ?>
                 <div class="aica-agent-card-meta">
-                    <span>⚡ <?php echo esc_html( $model_label ); ?></span>
+                    <span><?php echo esc_html( $model_label ); ?></span>
                     <?php if ( $has_web )    : ?> &nbsp;<span class="aica-cap-badge">🔍 Web</span><?php endif; ?>
                     <?php if ( $has_coding ) : ?> &nbsp;<span class="aica-cap-badge">💻 Coding</span><?php endif; ?>
                 </div>
@@ -102,7 +102,7 @@ $builtin_agents = [
                     <button type="button"
                             class="aica-btn aica-btn-small aica-btn-secondary aica-edit-agent"
                             data-id="<?php echo esc_attr( $agent->id ); ?>">
-                        ✏️ Bearbeiten
+                        Bearbeiten
                     </button>
                     <button type="button"
                             class="aica-btn aica-btn-small aica-btn-danger aica-delete-agent"

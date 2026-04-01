@@ -34,7 +34,7 @@ $status_labels = [
 ?>
 <div class="wrap aica-wrap">
     <div class="aica-header">
-        <h1>📋 Content-Verlauf</h1>
+        <h1>Content-Verlauf</h1>
         <p class="aica-header-sub">Alle generierten Artikel und deren Status.</p>
     </div>
 
@@ -48,7 +48,7 @@ $status_labels = [
         <?php endforeach; ?>
         <a href="<?php echo esc_url( admin_url( 'admin.php?page=aica-generate' ) ); ?>"
            class="aica-btn aica-btn-primary aica-btn-small" style="margin-left:auto;">
-            ➕ Neuer Artikel
+            Neuer Artikel
         </a>
     </div>
 
@@ -76,14 +76,14 @@ $status_labels = [
                     <td>
                         <strong><?php echo esc_html( mb_strimwidth( $item->topic, 0, 60, '...' ) ); ?></strong>
                         <?php if ( $item->keywords ) : ?>
-                        <br><small class="aica-keywords">🔑 <?php echo esc_html( mb_strimwidth( $item->keywords, 0, 50, '...' ) ); ?></small>
+                        <br><small class="aica-keywords"><?php echo esc_html( mb_strimwidth( $item->keywords, 0, 50, '...' ) ); ?></small>
                         <?php endif; ?>
                     </td>
                     <td>
                         <span class="aica-status aica-status-<?php echo esc_attr( $item->status ); ?>"
                               id="status-<?php echo esc_attr( $item->id ); ?>">
                             <?php
-                            $sl = [ 'pending' => '⏳ Ausstehend', 'processing' => '🔄 Läuft', 'completed' => '✅ Fertig', 'error' => '❌ Fehler' ];
+                            $sl = [ 'pending' => 'Ausstehend', 'processing' => 'In Bearbeitung', 'completed' => 'Abgeschlossen', 'error' => 'Fehler' ];
                             echo esc_html( $sl[ $item->status ] ?? $item->status );
                             ?>
                         </span>
@@ -108,17 +108,17 @@ $status_labels = [
                         <?php if ( $item->wp_post_id ) : ?>
                         <a href="<?php echo esc_url( get_edit_post_link( $item->wp_post_id ) ); ?>"
                            class="aica-btn aica-btn-small aica-btn-secondary" target="_blank"
-                           title="Post bearbeiten">✏️</a>
+                           title="Post bearbeiten">Bearbeiten</a>
                         <a href="<?php echo esc_url( get_permalink( $item->wp_post_id ) ); ?>"
                            class="aica-btn aica-btn-small aica-btn-secondary" target="_blank"
-                           title="Post anzeigen">👁️</a>
+                           title="Post anzeigen">Anzeigen</a>
                         <?php endif; ?>
                         <button type="button" class="aica-btn aica-btn-small aica-btn-secondary aica-view-details"
                                 data-id="<?php echo esc_attr( $item->id ); ?>"
-                                title="Details anzeigen">📋</button>
+                                title="Details anzeigen">Details</button>
                         <button type="button" class="aica-btn aica-btn-small aica-btn-danger aica-delete-content"
                                 data-id="<?php echo esc_attr( $item->id ); ?>"
-                                title="Löschen">🗑️</button>
+                                title="Löschen">Löschen</button>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -148,7 +148,7 @@ $status_labels = [
         <div class="aica-modal-backdrop"></div>
         <div class="aica-modal-content aica-modal-xlarge">
             <div class="aica-modal-header">
-                <h2>📋 Generierungs-Details</h2>
+                <h2>Generierungs-Details</h2>
                 <button type="button" class="aica-modal-close">✕</button>
             </div>
             <div class="aica-modal-body" id="aica-details-body">

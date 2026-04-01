@@ -80,7 +80,7 @@ $pipeline_templates = [
 ?>
 <div class="wrap aica-wrap">
     <div class="aica-header">
-        <h1>🔀 Pipelines</h1>
+        <h1>Pipelines</h1>
         <p class="aica-header-sub">Baue eigene Agenten-Pipelines per Drag &amp; Drop und verwende sie in Automatisierungs-Jobs.</p>
     </div>
 
@@ -125,8 +125,7 @@ $pipeline_templates = [
     <div class="aica-card" id="aica-pipeline-list-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
             <h2 class="aica-card-title" style="margin-bottom:0;">Meine Pipelines</h2>
-            <button type="button" id="aica-new-pipeline-btn" class="aica-btn aica-btn-primary">
-                ➕ Neue Pipeline
+            <button type="button" id="aica-new-pipeline-btn" class="aica-btn aica-btn-primary"> Neue Pipeline
             </button>
         </div>
 
@@ -173,13 +172,12 @@ $pipeline_templates = [
                     <td class="aica-table-actions">
                         <button type="button"
                                 class="aica-btn aica-btn-small aica-btn-secondary aica-edit-pipeline"
-                                data-id="<?php echo esc_attr( $pipeline->id ); ?>">
-                            ✏️ Bearbeiten
+                                data-id="<?php echo esc_attr( $pipeline->id ); ?>"> Bearbeiten
                         </button>
                         <button type="button"
                                 class="aica-btn aica-btn-small aica-btn-danger aica-delete-pipeline"
                                 data-id="<?php echo esc_attr( $pipeline->id ); ?>">
-                            🗑️
+                            
                         </button>
                     </td>
                 </tr>
@@ -252,7 +250,7 @@ $pipeline_templates = [
         <!-- Speichern -->
         <div class="aica-form-actions" style="margin-top:24px;">
             <button type="button" id="aica-save-pipeline" class="aica-btn aica-btn-primary aica-btn-large">
-                💾 Pipeline speichern
+                 Pipeline speichern
             </button>
             <button type="button" id="aica-builder-cancel" class="aica-btn aica-btn-secondary">
                 Abbrechen

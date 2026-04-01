@@ -8,12 +8,12 @@ $api_key        = \AICA\Settings::get_api_key();
 ?>
 <div class="wrap aica-wrap">
     <div class="aica-header">
-        <h1>⚙️ Einstellungen</h1>
+        <h1>Einstellungen</h1>
         <p class="aica-header-sub">Konfiguriere die Claude API und allgemeine Plugin-Optionen.</p>
     </div>
 
     <?php if ( $saved ) : ?>
-    <div class="notice notice-success is-dismissible"><p>✅ Einstellungen wurden gespeichert!</p></div>
+    <div class="notice notice-success is-dismissible"><p>Einstellungen wurden gespeichert.</p></div>
     <?php endif; ?>
 
     <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
@@ -22,7 +22,7 @@ $api_key        = \AICA\Settings::get_api_key();
 
         <!-- API-Konfiguration -->
         <div class="aica-card">
-            <h2 class="aica-card-title">🔑 Claude API-Konfiguration</h2>
+            <h2 class="aica-card-title">Claude API-Konfiguration</h2>
 
             <div class="aica-form-group">
                 <label for="aica_api_key" class="aica-label">
@@ -35,9 +35,9 @@ $api_key        = \AICA\Settings::get_api_key();
                         placeholder="sk-ant-api03-..."
                         class="regular-text aica-input"
                         autocomplete="new-password">
-                    <button type="button" id="aica-toggle-key" class="aica-btn aica-btn-small">👁</button>
+                    <button type="button" id="aica-toggle-key" class="aica-btn aica-btn-small">Anzeigen</button>
                     <button type="button" id="aica-test-api" class="aica-btn aica-btn-secondary">
-                        🔌 Verbindung testen
+                        Verbindung testen
                     </button>
                 </div>
                 <div id="aica-api-test-result" class="aica-api-test-result"></div>
@@ -84,7 +84,7 @@ $api_key        = \AICA\Settings::get_api_key();
 
         <!-- Content-Einstellungen -->
         <div class="aica-card">
-            <h2 class="aica-card-title">📝 Content-Einstellungen</h2>
+            <h2 class="aica-card-title">Content-Einstellungen</h2>
 
             <div class="aica-form-row">
                 <div class="aica-form-group aica-form-half">
@@ -125,16 +125,16 @@ $api_key        = \AICA\Settings::get_api_key();
         </div>
 
         <div class="aica-form-actions">
-            <?php submit_button( '💾 Einstellungen speichern', 'primary aica-btn aica-btn-primary', 'submit', false ); ?>
+            <?php submit_button( 'Einstellungen speichern', 'primary aica-btn aica-btn-primary', 'submit', false ); ?>
         </div>
     </form>
 
     <!-- Gefahrenzone -->
     <div class="aica-card aica-card-danger">
-        <h2 class="aica-card-title">⚠️ Daten zurücksetzen</h2>
+        <h2 class="aica-card-title">Daten zurücksetzen</h2>
         <p>Löscht alle generierten Content-Einträge und Logs (WordPress-Posts bleiben erhalten).</p>
         <button type="button" id="aica-reset-data" class="aica-btn aica-btn-danger">
-            🗑️ Content-Verlauf löschen
+            Content-Verlauf löschen
         </button>
     </div>
 </div>

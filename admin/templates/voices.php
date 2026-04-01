@@ -5,13 +5,13 @@ $profiles = \AICA\Settings::get_voice_profiles();
 ?>
 <div class="wrap aica-wrap">
     <div class="aica-header">
-        <h1>🎭 Voice Profile</h1>
+        <h1>Voice Profile</h1>
         <p class="aica-header-sub">Definiere Schreibstile und Tonalitäten für deine Content-Generierung.</p>
     </div>
 
     <div class="aica-toolbar">
         <button type="button" id="aica-add-voice" class="aica-btn aica-btn-primary">
-            ➕ Neues Voice Profil
+            Neues Voice Profil
         </button>
     </div>
 
@@ -21,7 +21,7 @@ $profiles = \AICA\Settings::get_voice_profiles();
         <div class="aica-card aica-empty-state">
             <p>Noch keine Voice Profile erstellt.</p>
             <button type="button" id="aica-add-voice-empty" class="aica-btn aica-btn-primary">
-                ➕ Erstes Profil erstellen
+                Erstes Profil erstellen
             </button>
         </div>
         <?php else : ?>
@@ -33,17 +33,17 @@ $profiles = \AICA\Settings::get_voice_profiles();
                     <div class="aica-voice-card-actions">
                         <button type="button" class="aica-btn aica-btn-small aica-btn-secondary aica-edit-voice"
                                 data-id="<?php echo esc_attr( $profile['id'] ); ?>">
-                            ✏️ Bearbeiten
+                            Bearbeiten
                         </button>
                         <button type="button" class="aica-btn aica-btn-small aica-btn-danger aica-delete-voice"
                                 data-id="<?php echo esc_attr( $profile['id'] ); ?>">
-                            🗑️
+                            
                         </button>
                     </div>
                 </div>
                 <p class="aica-voice-desc"><?php echo esc_html( $profile['description'] ?? '' ); ?></p>
                 <div class="aica-voice-meta">
-                    <span class="aica-voice-meta-item">🎵 <?php echo esc_html( $profile['tone'] ?? '' ); ?></span>
+                    <span class="aica-voice-meta-item"><?php echo esc_html( $profile['tone'] ?? '' ); ?></span>
                 </div>
                 <?php if ( ! empty( $profile['example'] ) ) : ?>
                 <blockquote class="aica-voice-example">
@@ -55,7 +55,7 @@ $profiles = \AICA\Settings::get_voice_profiles();
                     $avg = count( $ratings ) ? round( array_sum( $ratings ) / count( $ratings ), 1 ) : 0;
                 ?>
                 <div class="aica-voice-stats">
-                    ⭐ Ø <?php echo esc_html( $avg ); ?> aus <?php echo count( $ratings ); ?> Bewertungen
+                    Ø <?php echo esc_html( $avg ); ?> aus <?php echo count( $ratings ); ?> Bewertungen
                 </div>
                 <?php endif; ?>
             </div>

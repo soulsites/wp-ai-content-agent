@@ -11,13 +11,13 @@ $pipelines      = $wpdb->get_results(
 ?>
 <div class="wrap aica-wrap">
     <div class="aica-header">
-        <h1>✍️ Artikel generieren</h1>
+        <h1>Artikel generieren</h1>
         <p class="aica-header-sub">Lasse einen hochwertigen SEO-Artikel von der KI-Agenten-Pipeline erstellen.</p>
     </div>
 
     <?php if ( ! $api_configured ) : ?>
     <div class="notice notice-error">
-        <p>⚠️ Kein API-Schlüssel konfiguriert. Bitte zuerst
+        <p>Kein API-Schlüssel konfiguriert. Bitte zuerst
         <a href="<?php echo esc_url( admin_url( 'admin.php?page=aica-settings' ) ); ?>">Einstellungen</a>
         aufrufen.</p>
     </div>
@@ -26,11 +26,12 @@ $pipelines      = $wpdb->get_results(
     <div class="aica-generate-grid">
         <!-- Formular -->
         <div class="aica-card">
-            <h2 class="aica-card-title">📝 Artikel-Konfiguration</h2>
+            <h2 class="aica-card-title">Artikel-Konfiguration</h2>
             <form id="aica-generate-form">
                 <div class="aica-form-group">
                     <label for="aica-topic" class="aica-label">
-                        Thema / Titel * <span class="aica-hint">Beschreibe das Thema möglichst präzise</span>
+                        Thema / Titel *
+                        <span class="aica-hint">Beschreibe das Thema möglichst präzise</span>
                     </label>
                     <textarea id="aica-topic" name="topic" rows="3" required
                         placeholder="z.B. 'Die 10 besten Methoden zur Steigerung der Arbeitsproduktivität im Homeoffice 2024'"
@@ -39,7 +40,8 @@ $pipelines      = $wpdb->get_results(
 
                 <div class="aica-form-group">
                     <label for="aica-keywords" class="aica-label">
-                        Ziel-Keywords <span class="aica-hint">Kommagetrennt – optional</span>
+                        Ziel-Keywords
+                        <span class="aica-hint">Kommagetrennt – optional</span>
                     </label>
                     <input type="text" id="aica-keywords" name="keywords"
                         placeholder="z.B. Produktivität Homeoffice, Remote Work Tipps, Konzentration steigern"
@@ -48,7 +50,8 @@ $pipelines      = $wpdb->get_results(
 
                 <div class="aica-form-group">
                     <label for="aica-pipeline" class="aica-label">
-                        Pipeline <span class="aica-hint">Wähle die Agenten-Pipeline für die Generierung</span>
+                        Pipeline
+                        <span class="aica-hint">Wähle die Agenten-Pipeline für die Generierung</span>
                     </label>
                     <select id="aica-pipeline" name="pipeline_id" class="aica-select">
                         <option value="0">— Standard-Pipeline (alle Agenten) —</option>
@@ -103,10 +106,10 @@ $pipelines      = $wpdb->get_results(
                 <div class="aica-form-actions">
                     <button type="submit" id="aica-submit-btn" class="aica-btn aica-btn-primary aica-btn-large"
                         <?php disabled( ! $api_configured ); ?>>
-                        🚀 Artikel jetzt generieren
+                        Artikel jetzt generieren
                     </button>
                     <span class="aica-loading" id="aica-loading" style="display:none;">
-                        <span class="aica-spinner"></span> Agenten arbeiten...
+                        <span class="aica-spinner"></span> Agenten arbeiten…
                     </span>
                 </div>
             </form>
@@ -114,35 +117,33 @@ $pipelines      = $wpdb->get_results(
 
         <!-- Status-Panel -->
         <div class="aica-card" id="aica-status-panel" style="display:none;">
-            <h2 class="aica-card-title">🔄 Generierungs-Status</h2>
-            <div id="aica-pipeline-status">
-                <!-- Wird dynamisch von JavaScript gefüllt basierend auf gewählter Pipeline -->
-            </div>
+            <h2 class="aica-card-title">Generierungs-Status</h2>
+            <div id="aica-pipeline-status"></div>
 
             <div id="aica-logs" class="aica-logs">
-                <h3>📊 Live-Monitoring – KI-Gedanken & Agent-Aktivität</h3>
+                <h3>Live-Monitoring</h3>
                 <div id="aica-log-entries" class="aica-log-entries-container"></div>
             </div>
 
             <div id="aica-result" class="aica-result" style="display:none;">
-                <h3>✅ Generierung abgeschlossen!</h3>
+                <h3>Generierung abgeschlossen</h3>
                 <div id="aica-result-stats"></div>
                 <div class="aica-result-actions">
                     <a id="aica-edit-post" href="#" class="aica-btn aica-btn-primary" target="_blank">
-                        ✏️ Post bearbeiten
+                        Post bearbeiten
                     </a>
                     <a href="<?php echo esc_url( admin_url( 'admin.php?page=aica-content' ) ); ?>"
                        class="aica-btn aica-btn-secondary">
-                        📋 Alle Artikel
+                        Alle Artikel
                     </a>
                     <button id="aica-generate-another" class="aica-btn aica-btn-secondary">
-                        ➕ Weiteren Artikel
+                        Weiteren Artikel
                     </button>
                 </div>
             </div>
 
             <div id="aica-error" class="aica-error" style="display:none;">
-                <h3>❌ Fehler bei der Generierung</h3>
+                <h3>Fehler bei der Generierung</h3>
                 <p id="aica-error-message"></p>
             </div>
         </div>
@@ -168,7 +169,6 @@ $pipelines      = $wpdb->get_results(
     <script id="aica-pipelines-generate-data" type="application/json">
     <?php
     $pipelines_json = [];
-    // Standard-Pipeline
     $pipelines_json[0] = [
         'id' => 0,
         'name' => 'Standard-Pipeline',
@@ -180,18 +180,12 @@ $pipelines      = $wpdb->get_results(
             'content_writer'
         ]
     ];
-    // Custom Pipelines
     foreach ( $pipelines as $p ) {
-        $steps = json_decode( $p->description, true ) ?: [];
         $decoded_steps = [];
-
-        // Falls das Feld steps Agenten-Keys enthält, verwenden wir die
-        // Sonst müssen wir die Schritte aus der DB laden
         $wpdb_steps = $wpdb->get_var( $wpdb->prepare(
             "SELECT steps FROM {$wpdb->prefix}aica_pipelines WHERE id = %d",
             $p->id
         ));
-
         if ( $wpdb_steps ) {
             $steps_data = json_decode( $wpdb_steps, true ) ?: [];
             foreach ( $steps_data as $step ) {
@@ -200,26 +194,25 @@ $pipelines      = $wpdb->get_results(
                 }
             }
         }
-
         $pipelines_json[ $p->id ] = [
             'id'    => (int) $p->id,
             'name'  => $p->name,
-            'steps' => $decoded_steps ?: [ 'content_writer' ] // Fallback
+            'steps' => $decoded_steps ?: [ 'content_writer' ],
         ];
     }
     echo wp_json_encode( $pipelines_json );
     ?>
     </script>
 
-    <!-- Agent-Info für Dynamic Status UI -->
+    <!-- Agent-Info (letter abbreviations, no emoji) -->
     <script id="aica-agent-info-generate-data" type="application/json">
     <?php
-    $agent_icons = [
-        'content_analyzer'   => '🔍',
-        'audience_analyzer'  => '👥',
-        'keyword_researcher' => '🔑',
-        'researcher'         => '📚',
-        'content_writer'     => '✍️',
+    $agent_abbr = [
+        'content_analyzer'   => 'CA',
+        'audience_analyzer'  => 'ZA',
+        'keyword_researcher' => 'KW',
+        'researcher'         => 'TR',
+        'content_writer'     => 'CW',
     ];
     $agent_names = [
         'content_analyzer'   => 'Content-Analyse',
@@ -230,20 +223,21 @@ $pipelines      = $wpdb->get_results(
     ];
 
     $agent_info = [];
-    foreach ( $agent_icons as $key => $icon ) {
+    foreach ( $agent_abbr as $key => $abbr ) {
         $agent_info[ $key ] = [
-            'icon'  => $icon,
-            'name'  => $agent_names[ $key ] ?? $key,
+            'icon' => $abbr,
+            'name' => $agent_names[ $key ] ?? $key,
         ];
     }
 
-    // Custom Agenten auch hinzufügen
     $custom = $wpdb->get_results(
-        "SELECT agent_key AS `key`, name, icon FROM {$wpdb->prefix}aica_agents"
+        "SELECT agent_key AS `key`, name FROM {$wpdb->prefix}aica_agents"
     ) ?: [];
     foreach ( $custom as $a ) {
+        $words = explode( ' ', $a->name );
+        $abbr  = strtoupper( mb_substr( $words[0], 0, 1 ) . ( isset( $words[1] ) ? mb_substr( $words[1], 0, 1 ) : mb_substr( $words[0], 1, 1 ) ) );
         $agent_info[ $a->key ] = [
-            'icon' => $a->icon,
+            'icon' => $abbr,
             'name' => $a->name,
         ];
     }

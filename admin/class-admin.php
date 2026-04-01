@@ -98,11 +98,11 @@ class Admin {
 
         // Built-in Agenten (PHP-Klassen)
         $builtin_agents = [
-            [ 'key' => 'content_analyzer',   'name' => 'Content-Analyst',    'icon' => '🔍', 'result_key' => 'analysis_result', 'is_builtin' => true ],
-            [ 'key' => 'audience_analyzer',  'name' => 'Zielgruppenanalyst', 'icon' => '👥', 'result_key' => 'audience_result', 'is_builtin' => true ],
-            [ 'key' => 'keyword_researcher', 'name' => 'Keyword-Rechercheur','icon' => '🔑', 'result_key' => 'keyword_result',  'is_builtin' => true ],
-            [ 'key' => 'researcher',         'name' => 'Tiefenrechercheur',  'icon' => '📚', 'result_key' => 'research_result', 'is_builtin' => true ],
-            [ 'key' => 'content_writer',     'name' => 'Content-Autor',      'icon' => '✍️', 'result_key' => 'final_content',   'is_builtin' => true ],
+            [ 'key' => 'content_analyzer',   'name' => 'Content-Analyst',    'icon' => 'CA', 'result_key' => 'analysis_result', 'is_builtin' => true ],
+            [ 'key' => 'audience_analyzer',  'name' => 'Zielgruppenanalyst', 'icon' => 'ZA', 'result_key' => 'audience_result', 'is_builtin' => true ],
+            [ 'key' => 'keyword_researcher', 'name' => 'Keyword-Rechercheur','icon' => 'KW', 'result_key' => 'keyword_result',  'is_builtin' => true ],
+            [ 'key' => 'researcher',         'name' => 'Tiefenrechercheur',  'icon' => 'TR', 'result_key' => 'research_result', 'is_builtin' => true ],
+            [ 'key' => 'content_writer',     'name' => 'Content-Autor',      'icon' => 'CW', 'result_key' => 'final_content',   'is_builtin' => true ],
         ];
 
         // Custom Agenten aus DB
