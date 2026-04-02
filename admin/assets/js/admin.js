@@ -69,10 +69,13 @@
                 return;
             }
 
-            this.currentPipelineAgents.forEach((agentKey, index) => {
-                const info = this.agentInfo[agentKey] || { icon: '❓', name: agentKey };
+            this.currentPipelineAgents.forEach((step) => {
+                // Abwärtskompatibel: step kann String (alt) oder Objekt (neu) sein
+                const agentKey = typeof step === 'string' ? step : step.agent;
+                const stepId   = typeof step === 'string' ? agentKey : (step.id || agentKey);
+                const info     = this.agentInfo[agentKey] || { icon: '❓', name: agentKey };
                 const html = `
-                    <div class="aica-pipeline-item" id="agent-${agentKey}">
+                    <div class="aica-pipeline-item" id="aica-step-${stepId}" data-agent="${agentKey}">
                         <span class="aica-pipeline-item-icon">⏳</span>
                         <span class="aica-pipeline-item-label">${info.icon} ${info.name}</span>
                         <span class="aica-pipeline-item-status"></span>
@@ -118,7 +121,7 @@
             this.buildPipelineStatusUI();
 
             // Agent-Status zurücksetzen
-            $('[id^="agent-"]').removeClass('active done error')
+            $('[id^="aica-step-"]').removeClass('active done error')
                 .find('.aica-pipeline-item-icon').text('⏳');
 
             $.ajax({
@@ -286,27 +289,40 @@
         },
 
         updatePipelineStatus(logs) {
-            // Use actual agents from current pipeline instead of hardcoded list
-            const agentOrder = this.currentPipelineAgents || [];
-            const doneAgents = new Set();
-            const activeAgent = logs.length ? logs[logs.length - 1].agent : null;
-
+            // Zähle Abschlüsse pro Agent-Key in Log-Reihenfolge
+            const doneCounters = {};
             logs.forEach(log => {
                 if (log.message && log.message.includes('Abgeschlossen')) {
-                    doneAgents.add(log.agent);
+                    doneCounters[log.agent] = (doneCounters[log.agent] || 0) + 1;
                 }
             });
 
-            agentOrder.forEach(key => {
-                const $item = $(`#agent-${key}`);
+            // Letzter Log-Eintrag bestimmt den aktiven Agenten
+            const activeAgent = logs.length ? logs[logs.length - 1].agent : null;
+
+            // Pro Agent-Key zählen wir, wie viele Step-Items wir bereits als
+            // "done" markiert haben — so werden bei doppeltem Agenten die
+            // Items von links nach rechts abgehakt statt alle auf einmal.
+            const markedDone   = {};
+            const markedActive = {};
+
+            (this.currentPipelineAgents || []).forEach(step => {
+                const agentKey = typeof step === 'string' ? step : step.agent;
+                const stepId   = typeof step === 'string' ? agentKey : (step.id || agentKey);
+                const $item    = $(`#aica-step-${stepId}`);
                 if (!$item.length) return;
 
-                if (doneAgents.has(key)) {
+                markedDone[agentKey]   = markedDone[agentKey]   || 0;
+                markedActive[agentKey] = markedActive[agentKey] || false;
+
+                if (markedDone[agentKey] < (doneCounters[agentKey] || 0)) {
                     $item.removeClass('active error').addClass('done');
                     $item.find('.aica-pipeline-item-icon').text('✅');
-                } else if (key === activeAgent) {
+                    markedDone[agentKey]++;
+                } else if (agentKey === activeAgent && !markedActive[agentKey]) {
                     $item.removeClass('done error').addClass('active');
                     $item.find('.aica-pipeline-item-icon').html('<span class="aica-spinner"></span>');
+                    markedActive[agentKey] = true;
                 }
             });
         },
@@ -714,6 +730,12 @@
                 if (pd) this.pipelines = JSON.parse(pd.textContent);
             } catch(e) {}
 
+            // Datalist für Bedingungsquellen (result_key autocomplete)
+            if (!document.getElementById('aica-result-keys-datalist')) {
+                $('body').append('<datalist id="aica-result-keys-datalist"></datalist>');
+            }
+            this.updateResultKeyDatalist();
+
             // SortableJS auf Pipeline-Canvas (nur falls vorhanden)
             const canvas = document.getElementById('aica-pipeline-canvas');
             if (canvas && typeof Sortable !== 'undefined') {
@@ -738,6 +760,7 @@
             $(document).on('click', '.aica-remove-step',     (e) => this.removeStep($(e.currentTarget).closest('.aica-pipeline-step-item').data('step-id')));
             $(document).on('click', '.aica-add-condition-btn', (e) => this.addCondition($(e.currentTarget).closest('.aica-pipeline-step-item').data('step-id')));
             $(document).on('click', '.aica-remove-condition',  (e) => $(e.currentTarget).closest('.aica-condition-row').remove());
+            $(document).on('input', '.aica-step-result-key', () => this.updateResultKeyDatalist());
             $(document).on('change', '.aica-step-enabled-toggle', (e) => {
                 const $item    = $(e.currentTarget).closest('.aica-pipeline-step-item');
                 const enabled  = $(e.currentTarget).prop('checked');
@@ -788,15 +811,19 @@
                 agent:      agentKey,
                 enabled:    true,
                 conditions: [],
+                result_key: info.result_key || agentKey + '_result',
             };
             this.steps.push(step);
             this.renderStep(step);
             this.updatePlaceholder();
+            this.updateResultKeyDatalist();
         },
 
         renderStep(step) {
-            const info    = this.agentMap[step.agent] || { icon: '❓', name: step.agent };
-            const enabled = step.enabled !== false;
+            const info           = this.agentMap[step.agent] || { icon: '❓', name: step.agent };
+            const enabled        = step.enabled !== false;
+            const defaultResKey  = info.result_key || step.agent + '_result';
+            const resultKey      = step.result_key || defaultResKey;
 
             let condHtml = '';
             (step.conditions || []).forEach(cond => {
@@ -822,6 +849,13 @@
                         <button type="button" class="aica-remove-step aica-btn aica-btn-small aica-btn-danger"
                                 title="Entfernen">✕</button>
                     </div>
+                    <div class="aica-step-meta">
+                        <span class="aica-step-meta-label">Schreibt in:</span>
+                        <input type="text" class="aica-input aica-step-result-key"
+                               value="${this.escHtml(resultKey)}"
+                               placeholder="${this.escHtml(defaultResKey)}"
+                               title="Context-Key für das Ergebnis dieses Schritts">
+                    </div>
                     <div class="aica-step-conditions">
                         ${condHtml}
                     </div>
@@ -832,9 +866,10 @@
         },
 
         buildConditionRowHtml(cond = {}) {
-            const sourceOpts = Object.entries(this.sourceOptions).map(([val, label]) =>
-                `<option value="${this.escHtml(val)}" ${cond.source === val ? 'selected' : ''}>${this.escHtml(label)}</option>`
-            ).join('');
+            // Source: free-text input + datalist for autocomplete (supports custom result_keys)
+            const sourceInput = `<input type="text" list="aica-result-keys-datalist"
+                class="aica-input aica-cond-source" value="${this.escHtml(cond.source || '')}"
+                placeholder="result_key…" style="width:160px;">`;
 
             const operators = [
                 ['contains',     'enthält'],
@@ -853,7 +888,7 @@
             return `
                 <div class="aica-condition-row">
                     <span class="aica-condition-label">WENN</span>
-                    <select class="aica-select aica-cond-source">${sourceOpts}</select>
+                    ${sourceInput}
                     <select class="aica-select aica-cond-operator">${opOpts}</select>
                     <input type="text" class="aica-input aica-cond-value" value="${this.escHtml(cond.value || '')}" placeholder="Wert…">
                     <span class="aica-condition-label">→ Treffer:</span>
@@ -873,11 +908,28 @@
             $(`.aica-pipeline-step-item[data-step-id="${stepId}"]`).remove();
             this.steps = this.steps.filter(s => s.id !== stepId);
             this.updatePlaceholder();
+            this.updateResultKeyDatalist();
         },
 
         updatePlaceholder() {
             const hasSteps = $('#aica-pipeline-canvas .aica-pipeline-step-item').length > 0;
             $('#aica-canvas-placeholder').toggle(!hasSteps);
+        },
+
+        // Aktualisiert die Datalist mit allen aktuell verwendeten result_keys
+        // (Agent-Defaults + manuell geänderte). Dadurch sind Bedingungsquellen
+        // immer auf dem aktuellen Stand, auch bei doppelten Agenten.
+        updateResultKeyDatalist() {
+            const keys = new Set();
+            // Alle Agent-Defaults
+            Object.values(this.agentMap).forEach(a => { if (a.result_key) keys.add(a.result_key); });
+            // Aktuell im Builder eingetragene result_keys
+            $('#aica-pipeline-canvas .aica-step-result-key').each(function() {
+                const v = $(this).val().trim();
+                if (v) keys.add(v);
+            });
+            const $dl = $('#aica-result-keys-datalist').empty();
+            keys.forEach(k => $dl.append(`<option value="${$('<span>').text(k).html()}">`));
         },
 
         syncStepsFromDOM() {
@@ -909,7 +961,8 @@
                     });
                 });
 
-                steps.push({ id: stepId, agent, enabled, conditions });
+                const result_key = $item.find('.aica-step-result-key').val().trim();
+                steps.push({ id: stepId, agent, enabled, conditions, result_key: result_key || null });
             });
             return steps;
         },

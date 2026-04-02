@@ -968,6 +968,29 @@
     font-weight: 500;
 }
 
+/* ---- Pipeline Step Meta (result_key) ---- */
+.aica-step-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px 4px 36px;
+    background: var(--aica-surface-dim);
+    border-top: 1px solid var(--aica-outline);
+}
+.aica-step-meta-label {
+    font-size: 11px;
+    color: var(--aica-text-subtle);
+    white-space: nowrap;
+}
+.aica-step-result-key {
+    font-size: 12px;
+    font-family: monospace;
+    padding: 2px 6px;
+    height: 26px;
+    max-width: 220px;
+    color: var(--aica-primary-dk);
+}
+
 /* ============================================================
    Git Repository Settings Rows
 ============================================================ */
