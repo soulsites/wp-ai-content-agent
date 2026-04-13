@@ -49,6 +49,7 @@ class Admin {
         add_submenu_page( 'aica', 'Pipelines',              'Pipelines',             'manage_options',  'aica-pipelines',     [ $this, 'page_pipelines' ] );
         add_submenu_page( 'aica', 'Agenten',               'Agenten',               'manage_options',  'aica-agents',        [ $this, 'page_agents' ] );
         add_submenu_page( 'aica', 'Usage & Kosten',          'Usage & Kosten',        'manage_options',  'aica-usage',         [ $this, 'page_usage' ] );
+        add_submenu_page( 'aica', 'Website-Gedächtnis',    'Website-Gedächtnis',    'manage_options',  'aica-memory',        [ $this, 'page_memory' ] );
         add_submenu_page( 'aica', 'Einstellungen',         'Einstellungen',         'manage_options',  'aica-settings',      [ $this, 'page_settings' ] );
     }
 
@@ -137,6 +138,8 @@ class Admin {
             'defaultModel'   => \AICA\Settings::get_model(),
             'models'         => \AICA\Settings::get_available_models(),
             'gitRepos'       => \AICA\Settings::get_git_repositories(),
+            'memoryEnabled'  => \AICA\Settings::is_memory_enabled(),
+            'memoryModel'    => \AICA\Settings::get_memory_model(),
             'i18n'           => [
                 'generating'   => 'Generierung läuft...',
                 'done'         => 'Abgeschlossen!',
@@ -176,6 +179,7 @@ class Admin {
     public function page_pipelines(): void { $this->render( 'pipelines' ); }
     public function page_agents():    void { $this->render( 'agents' );    }
     public function page_usage():     void { $this->render( 'usage' );     }
+    public function page_memory():    void { $this->render( 'memory' );    }
     public function page_settings():  void { $this->render( 'settings' );  }
 
     private function render( string $template ): void {

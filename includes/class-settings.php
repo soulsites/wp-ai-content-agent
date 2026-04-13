@@ -74,6 +74,14 @@ class Settings {
         ];
     }
 
+    public static function is_memory_enabled(): bool {
+        return (bool) self::get( 'aica_memory_enabled', 1 );
+    }
+
+    public static function get_memory_model(): string {
+        return self::get( 'aica_memory_model', 'claude-sonnet-4-6' );
+    }
+
     public static function get_git_repositories(): array {
         $repos = self::get( 'aica_git_repositories', [] );
         return is_array( $repos ) ? $repos : [];
@@ -120,6 +128,14 @@ class Settings {
         }
 
         self::set( 'aica_agent_settings', $agent_settings );
+
+        // Memory-Einstellungen
+        if ( array_key_exists( 'aica_memory_enabled', $data ) || array_key_exists( 'aica_memory_model', $data ) ) {
+            self::set( 'aica_memory_enabled', ! empty( $data['aica_memory_enabled'] ) ? 1 : 0 );
+            if ( ! empty( $data['aica_memory_model'] ) ) {
+                self::set( 'aica_memory_model', sanitize_key( $data['aica_memory_model'] ) );
+            }
+        }
 
         // Git Repositories
         $repos_json = sanitize_text_field( wp_unslash( $data['aica_git_repos_json'] ?? '[]' ) );
