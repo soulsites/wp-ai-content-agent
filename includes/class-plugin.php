@@ -782,18 +782,18 @@ class Plugin {
             . "}\n\n"
             . "TEXT:\n" . $text_excerpt;
 
-        $response = $client->send_message(
+        $response = $client->send_message_tracked(
             $system_prompt,
             [ [ 'role' => 'user', 'content' => $user_prompt ] ],
             [
-                'model'      => $model,
-                'max_tokens' => 2000,
+                'model'       => $model,
+                'max_tokens'  => 2000,
                 'temperature' => 0.2,
             ]
         );
 
-        if ( is_wp_error( $response ) ) {
-            wp_send_json_error( [ 'message' => 'KI-Fehler: ' . $response->get_error_message() ] );
+        if ( ! $response['success'] ) {
+            wp_send_json_error( [ 'message' => 'KI-Fehler: ' . ( $response['error'] ?? 'Unbekannter Fehler' ) ] );
         }
 
         $raw_text    = $response['text'] ?? '';
