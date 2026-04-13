@@ -1246,6 +1246,454 @@
     };
 
     /* ============================================================
+       Website-Gedächtnis (Memory Analyzer)
+    ============================================================ */
+    const MemoryAnalyzer = {
+        allPosts:   [],
+        selected:   new Set(),  // post IDs als Zahlen
+        activeTab:  'posts',
+        isRunning:  false,
+        queue:      [],         // { source_type, source_id, title } | { source_type:'manual', title }
+        queueDone:  0,
+
+        init() {
+            if (!$('#aica-memory-start').length) return;
+
+            // Inhalte laden
+            this.loadPosts();
+            this.loadEntries();
+
+            // Toggle (Gedächtnis aktivieren/deaktivieren)
+            $('#aica-memory-toggle').on('click', () => this.toggleMemory());
+
+            // Modell speichern
+            $('#aica-save-memory-model').on('click', () => this.saveModel());
+
+            // Tabs
+            $(document).on('click', '.aica-memory-tab', (e) => {
+                const tab = $(e.currentTarget).data('tab');
+                this.switchTab(tab);
+            });
+
+            // Alle auswählen / abwählen
+            $('#aica-memory-select-all').on('click', () => this.selectAll());
+            $('#aica-memory-deselect-all').on('click', () => this.deselectAll());
+
+            // Analyse starten
+            $('#aica-memory-start').on('click', () => this.startAnalysis());
+
+            // Einträge aktualisieren
+            $('#aica-memory-reload-entries').on('click', () => this.loadEntries());
+        },
+
+        toggleMemory() {
+            const $toggle = $('#aica-memory-toggle');
+            const isOn    = $toggle.data('enabled') === 1;
+            const newVal  = isOn ? 0 : 1;
+
+            $.ajax({
+                url:    AJAX_URL,
+                method: 'POST',
+                data: { action: 'aica_save_memory_settings', nonce: NONCE, enabled: newVal },
+                success: (resp) => {
+                    if (!resp.success) return;
+                    $toggle.data('enabled', newVal);
+                    if (newVal) {
+                        $toggle.addClass('aica-toggle-on');
+                        $('#aica-memory-status-text').text('Gedächtnis aktiv');
+                    } else {
+                        $toggle.removeClass('aica-toggle-on');
+                        $('#aica-memory-status-text').text('Gedächtnis deaktiviert');
+                    }
+                }
+            });
+        },
+
+        saveModel() {
+            const model = $('#aica-memory-model').val();
+            const $btn  = $('#aica-save-memory-model').prop('disabled', true).text('Wird gespeichert…');
+            $.ajax({
+                url:    AJAX_URL,
+                method: 'POST',
+                data:   { action: 'aica_save_memory_settings', nonce: NONCE, model },
+                success: (resp) => {
+                    if (resp.success) {
+                        $btn.text('Gespeichert!');
+                        setTimeout(() => $btn.prop('disabled', false).text('Modell speichern'), 1500);
+                    }
+                },
+                error: () => $btn.prop('disabled', false).text('Modell speichern'),
+            });
+        },
+
+        loadPosts() {
+            $('#aica-memory-list-loading').show();
+            $('#aica-memory-tab-posts, #aica-memory-tab-pages').hide().empty();
+
+            $.ajax({
+                url:  AJAX_URL,
+                data: { action: 'aica_get_memory_posts', nonce: NONCE },
+                success: (resp) => {
+                    if (!resp.success) return;
+                    this.allPosts = resp.data.posts || [];
+                    this.renderPostList();
+                    $('#aica-memory-list-loading').hide();
+                    this.switchTab(this.activeTab);
+                },
+                error: () => {
+                    $('#aica-memory-list-loading').text('Fehler beim Laden der Inhalte.');
+                }
+            });
+        },
+
+        renderPostList() {
+            const $posts = $('#aica-memory-tab-posts').empty();
+            const $pages = $('#aica-memory-tab-pages').empty();
+
+            let postsCount = 0, pagesCount = 0;
+
+            this.allPosts.forEach((post) => {
+                const $el = this.buildPostItem(post);
+                if (post.type === 'page') {
+                    $pages.append($el);
+                    pagesCount++;
+                } else {
+                    $posts.append($el);
+                    postsCount++;
+                }
+            });
+
+            if (postsCount === 0) $posts.html('<p class="aica-memory-empty">Keine Beiträge gefunden.</p>');
+            if (pagesCount === 0) $pages.html('<p class="aica-memory-empty">Keine Seiten gefunden.</p>');
+        },
+
+        buildPostItem(post) {
+            const isAnalyzed = post.analyzed;
+            const isSelected = this.selected.has(post.id);
+
+            const $el = $('<div class="aica-memory-post-item"></div>');
+            if (isAnalyzed) $el.addClass('aica-memory-post-analyzed');
+            if (isSelected) $el.addClass('aica-memory-post-selected');
+            if (!isAnalyzed) {
+                $el.attr('data-id', post.id).attr('data-type', post.type);
+                $el.on('click', () => this.toggleItem(post.id));
+            }
+
+            const date = post.date ? post.date.slice(0, 10) : '';
+            const words = post.word_count ? `${Number(post.word_count).toLocaleString('de-DE')} Wörter` : '';
+
+            $el.html(`
+                <div class="aica-memory-post-check">${isAnalyzed ? '✓' : (isSelected ? '✓' : '')}</div>
+                <div class="aica-memory-post-info">
+                    <div class="aica-memory-post-title">${$('<span>').text(post.title).html()}</div>
+                    <div class="aica-memory-post-meta">
+                        ${date ? `<span>${date}</span>` : ''}
+                        ${words ? `<span>${words}</span>` : ''}
+                        ${isAnalyzed ? '<span class="aica-memory-badge-analyzed">Analysiert</span>' : ''}
+                    </div>
+                </div>
+            `);
+
+            return $el;
+        },
+
+        toggleItem(postId) {
+            if (this.selected.has(postId)) {
+                this.selected.delete(postId);
+            } else {
+                this.selected.add(postId);
+            }
+            this.updateSelectedUI(postId);
+            this.updateCounter();
+        },
+
+        updateSelectedUI(postId) {
+            const $el      = $(`[data-id="${postId}"]`);
+            const selected = this.selected.has(postId);
+            $el.toggleClass('aica-memory-post-selected', selected);
+            $el.find('.aica-memory-post-check').text(selected ? '✓' : '');
+        },
+
+        selectAll() {
+            this.allPosts.forEach((post) => {
+                if (!post.analyzed) this.selected.add(post.id);
+            });
+            this.allPosts.forEach((post) => {
+                if (!post.analyzed) this.updateSelectedUI(post.id);
+            });
+            this.updateCounter();
+        },
+
+        deselectAll() {
+            this.selected.forEach((id) => this.updateSelectedUI(id));
+            this.selected.clear();
+            this.updateCounter();
+        },
+
+        updateCounter() {
+            $('#aica-memory-selected-count').text(`${this.selected.size} ausgewählt`);
+        },
+
+        switchTab(tab) {
+            this.activeTab = tab;
+            $('.aica-memory-tab').removeClass('active');
+            $(`.aica-memory-tab[data-tab="${tab}"]`).addClass('active');
+            $('#aica-memory-tab-posts, #aica-memory-tab-pages').hide();
+            $(`#aica-memory-tab-${tab}`).show();
+        },
+
+        startAnalysis() {
+            if (this.isRunning) return;
+
+            // Queue aufbauen
+            this.queue = [];
+
+            // Ausgewählte Posts/Seiten
+            this.selected.forEach((postId) => {
+                const post = this.allPosts.find(p => p.id === postId);
+                if (post) {
+                    this.queue.push({
+                        source_type: post.type,
+                        source_id:   post.id,
+                        title:       post.title,
+                    });
+                }
+            });
+
+            // Manueller Text
+            const customText = $('#aica-memory-custom-text').val().trim();
+            if (customText.length >= 50) {
+                this.queue.push({
+                    source_type:  'manual',
+                    source_id:    0,
+                    title:        'Manueller Text',
+                    custom_text:  customText,
+                });
+            }
+
+            if (this.queue.length === 0) {
+                alert('Bitte mindestens einen Beitrag/eine Seite auswählen oder einen manuellen Text eingeben (min. 50 Zeichen).');
+                return;
+            }
+
+            this.isRunning = true;
+            this.queueDone = 0;
+            $('#aica-memory-start').prop('disabled', true).text('Analyse läuft…');
+            $('#aica-memory-results').show();
+            $('#aica-memory-results-list').empty();
+            $('#aica-memory-queue-info').show().text(`0 / ${this.queue.length} abgeschlossen`);
+
+            this.processNext();
+        },
+
+        processNext() {
+            if (this.queueDone >= this.queue.length) {
+                this.isRunning = false;
+                $('#aica-memory-start').prop('disabled', false).text('Analyse starten');
+                $('#aica-memory-queue-info').text(`Alle ${this.queue.length} Texte analysiert!`);
+                this.loadPosts();    // Liste aktualisieren (analysierte Einträge grau)
+                this.loadEntries();  // Gespeicherte Analysen aktualisieren
+                this.deselectAll();
+                return;
+            }
+
+            const item  = this.queue[this.queueDone];
+            const $card = this.addResultCard(item.title, 'running');
+
+            const postData = {
+                action:      'aica_analyze_memory_item',
+                nonce:        NONCE,
+                source_type: item.source_type,
+                source_id:   item.source_id || 0,
+            };
+            if (item.custom_text) postData.custom_text = item.custom_text;
+
+            $.ajax({
+                url:     AJAX_URL,
+                method:  'POST',
+                timeout: 120000,
+                data:    postData,
+                success: (resp) => {
+                    if (resp.success) {
+                        this.updateResultCard($card, 'success', resp.data);
+                    } else {
+                        this.updateResultCard($card, 'error', null, resp.data?.message || I18N.error);
+                    }
+                },
+                error: (xhr, status) => {
+                    this.updateResultCard($card, 'error', null, `Verbindungsfehler (${status})`);
+                },
+                complete: () => {
+                    this.queueDone++;
+                    $('#aica-memory-queue-info').text(`${this.queueDone} / ${this.queue.length} abgeschlossen`);
+                    this.processNext();
+                }
+            });
+        },
+
+        addResultCard(title, state) {
+            const $card = $(`
+                <div class="aica-memory-result-card aica-memory-result-${state}">
+                    <div class="aica-memory-result-header">
+                        <span class="aica-memory-result-icon">${state === 'running' ? '<span class="aica-spinner"></span>' : ''}</span>
+                        <strong class="aica-memory-result-title">${$('<span>').text(title).html()}</strong>
+                    </div>
+                    <div class="aica-memory-result-body"></div>
+                </div>
+            `);
+            $('#aica-memory-results-list').prepend($card);
+            return $card;
+        },
+
+        updateResultCard($card, state, data, errorMsg) {
+            $card.removeClass('aica-memory-result-running aica-memory-result-success aica-memory-result-error')
+                .addClass(`aica-memory-result-${state}`);
+
+            const $icon = $card.find('.aica-memory-result-icon');
+            const $body = $card.find('.aica-memory-result-body');
+
+            if (state === 'success' && data) {
+                $icon.html('✅');
+                const keywords = (data.keywords || []).join(', ') || '–';
+                const topics   = (data.topics || []).join(', ') || '–';
+                const phrases  = (data.recurring_phrases || []).join(', ') || '–';
+                $body.html(`
+                    <div class="aica-memory-result-grid">
+                        <div class="aica-memory-result-field">
+                            <span class="aica-memory-result-field-label">Zusammenfassung</span>
+                            <span>${$('<span>').text(data.summary || '–').html()}</span>
+                        </div>
+                        <div class="aica-memory-result-field">
+                            <span class="aica-memory-result-field-label">Keywords</span>
+                            <span>${$('<span>').text(keywords).html()}</span>
+                        </div>
+                        <div class="aica-memory-result-field">
+                            <span class="aica-memory-result-field-label">Schreibstil</span>
+                            <span>${$('<span>').text(data.writing_style || '–').html()}</span>
+                        </div>
+                        <div class="aica-memory-result-field">
+                            <span class="aica-memory-result-field-label">Ton</span>
+                            <span>${$('<span>').text(data.tone || '–').html()}</span>
+                        </div>
+                        <div class="aica-memory-result-field">
+                            <span class="aica-memory-result-field-label">Zielgruppe</span>
+                            <span>${$('<span>').text(data.target_audience || '–').html()}</span>
+                        </div>
+                        <div class="aica-memory-result-field">
+                            <span class="aica-memory-result-field-label">Inhaltstyp</span>
+                            <span>${$('<span>').text(data.content_type || '–').html()}</span>
+                        </div>
+                        <div class="aica-memory-result-field">
+                            <span class="aica-memory-result-field-label">Themen</span>
+                            <span>${$('<span>').text(topics).html()}</span>
+                        </div>
+                        <div class="aica-memory-result-field">
+                            <span class="aica-memory-result-field-label">Sentiment / Level</span>
+                            <span>${$('<span>').text((data.sentiment || '–') + ' / ' + (data.reading_level || '–')).html()}</span>
+                        </div>
+                        <div class="aica-memory-result-field aica-memory-result-field-full">
+                            <span class="aica-memory-result-field-label">Besonderheiten</span>
+                            <span>${$('<span>').text(data.unique_features || '–').html()}</span>
+                        </div>
+                        <div class="aica-memory-result-field aica-memory-result-field-full">
+                            <span class="aica-memory-result-field-label">Wiederkehrende Phrasen</span>
+                            <span>${$('<span>').text(phrases).html()}</span>
+                        </div>
+                    </div>
+                    <div style="font-size:11px;color:var(--aica-text-muted);margin-top:8px;">
+                        ${data.word_count ? Number(data.word_count).toLocaleString('de-DE') + ' Wörter' : ''}
+                        ${data.tokens_used ? ' · ' + Number(data.tokens_used).toLocaleString('de-DE') + ' Tokens' : ''}
+                        ${data.source_url ? ` · <a href="${data.source_url}" target="_blank" style="color:var(--aica-primary);">Artikel öffnen</a>` : ''}
+                    </div>
+                `);
+            } else if (state === 'error') {
+                $icon.html('❌');
+                $body.html(`<p style="color:var(--aica-danger);margin:0;">${$('<span>').text(errorMsg || I18N.error).html()}</p>`);
+            }
+        },
+
+        loadEntries() {
+            const $list    = $('#aica-memory-entries-list').empty();
+            const $loading = $('#aica-memory-entries-loading').show().text('Wird geladen…');
+
+            $.ajax({
+                url:  AJAX_URL,
+                data: { action: 'aica_get_memory_entries', nonce: NONCE },
+                success: (resp) => {
+                    $loading.hide();
+                    if (!resp.success) { $list.html('<p>Fehler beim Laden.</p>'); return; }
+                    const entries = resp.data.entries || [];
+                    if (entries.length === 0) {
+                        $list.html('<p style="color:var(--aica-text-muted);font-size:13px;">Noch keine Analysen gespeichert.</p>');
+                        return;
+                    }
+                    $list.html(this.buildEntriesTable(entries));
+                    $list.find('.aica-memory-delete-entry').on('click', (e) => {
+                        const id = $(e.currentTarget).data('id');
+                        this.deleteEntry(id);
+                    });
+                },
+                error: () => { $loading.text('Fehler beim Laden.'); }
+            });
+        },
+
+        buildEntriesTable(entries) {
+            const rows = entries.map(entry => {
+                const keywords = (entry.keywords || []).slice(0, 4).join(', ') || '–';
+                const date     = entry.analyzed_at ? entry.analyzed_at.slice(0, 10) : '';
+                const icon     = entry.error_message ? '❌' : '✅';
+                const typeLabel = entry.source_type === 'page' ? 'Seite'
+                    : entry.source_type === 'manual' ? 'Manuell' : 'Beitrag';
+
+                const titleHtml = entry.source_url
+                    ? `<a href="${entry.source_url}" target="_blank" style="color:var(--aica-primary);">${$('<span>').text(entry.source_title || '–').html()}</a>`
+                    : $('<span>').text(entry.source_title || '–').html();
+
+                return `<tr>
+                    <td style="width:24px;text-align:center;">${icon}</td>
+                    <td><span class="aica-memory-type-badge">${typeLabel}</span></td>
+                    <td>${titleHtml}</td>
+                    <td style="max-width:250px;font-size:12px;color:var(--aica-text-muted);">${$('<span>').text(entry.summary || entry.error_message || '–').html()}</td>
+                    <td style="font-size:12px;color:var(--aica-text-muted);">${$('<span>').text(keywords).html()}</td>
+                    <td style="font-size:12px;color:var(--aica-text-muted);white-space:nowrap;">${date}</td>
+                    <td>
+                        <button type="button" class="aica-btn aica-btn-danger aica-btn-small aica-memory-delete-entry" data-id="${entry.id}" title="Löschen">✕</button>
+                    </td>
+                </tr>`;
+            }).join('');
+
+            return `<div style="overflow-x:auto;">
+                <table class="widefat fixed striped" style="font-size:13px;">
+                    <thead>
+                        <tr>
+                            <th style="width:24px;"></th>
+                            <th style="width:70px;">Typ</th>
+                            <th>Titel</th>
+                            <th>Zusammenfassung</th>
+                            <th>Keywords</th>
+                            <th style="width:90px;">Analysiert</th>
+                            <th style="width:40px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>`;
+        },
+
+        deleteEntry(id) {
+            if (!confirm(I18N.confirm_del)) return;
+            $.ajax({
+                url:    AJAX_URL,
+                method: 'POST',
+                data:   { action: 'aica_delete_memory_entry', nonce: NONCE, entry_id: id },
+                success: (resp) => {
+                    if (resp.success) this.loadEntries();
+                }
+            });
+        },
+    };
+
+    /* ============================================================
        Reset Data
     ============================================================ */
     $('#aica-reset-data').on('click', function() {
@@ -1311,6 +1759,7 @@
         AgentManager.init();
         BuiltinAgentManager.init();
         GitRepoSettings.init();
+        MemoryAnalyzer.init();
 
         // Modal-Backdrop close
         $(document).on('click', '.aica-modal-backdrop', function() {

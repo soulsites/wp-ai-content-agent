@@ -68,6 +68,11 @@ class Plugin {
         add_action( 'wp_ajax_aica_delete_agent',                [ $this, 'ajax_delete_agent' ] );
         add_action( 'wp_ajax_aica_save_builtin_agent_settings', [ $this, 'ajax_save_builtin_agent_settings' ] );
         add_action( 'wp_ajax_aica_get_usage_data',              [ $this, 'ajax_get_usage_data' ] );
+        add_action( 'wp_ajax_aica_get_memory_posts',            [ $this, 'ajax_get_memory_posts' ] );
+        add_action( 'wp_ajax_aica_analyze_memory_item',         [ $this, 'ajax_analyze_memory_item' ] );
+        add_action( 'wp_ajax_aica_get_memory_entries',          [ $this, 'ajax_get_memory_entries' ] );
+        add_action( 'wp_ajax_aica_delete_memory_entry',         [ $this, 'ajax_delete_memory_entry' ] );
+        add_action( 'wp_ajax_aica_save_memory_settings',        [ $this, 'ajax_save_memory_settings' ] );
     }
 
     public function ajax_generate_content(): void {
@@ -653,6 +658,322 @@ class Plugin {
                 'total_words'    => (int) ( $summary->total_words ?? 0 ),
                 'avg_tokens'     => (int) ( $summary->avg_tokens ?? 0 ),
             ],
+        ] );
+    }
+
+    /**
+     * AJAX: Alle Beiträge und Seiten mit Memory-Analysestatus liefern.
+     */
+    public function ajax_get_memory_posts(): void {
+        check_ajax_referer( 'aica_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( [], 403 );
+        }
+
+        global $wpdb;
+
+        // Bereits analysierte source_ids ermitteln
+        $memory_table  = $wpdb->prefix . Installer::TABLE_MEMORY;
+        $analyzed_ids  = $wpdb->get_col(
+            "SELECT source_id FROM {$memory_table} WHERE source_id IS NOT NULL"
+        );
+        $analyzed_ids = array_map( 'intval', $analyzed_ids ?: [] );
+
+        // Alle veröffentlichten Seiten und Beiträge laden
+        $posts = get_posts( [
+            'post_type'      => [ 'post', 'page' ],
+            'post_status'    => 'publish',
+            'posts_per_page' => -1,
+            'orderby'        => 'date',
+            'order'          => 'DESC',
+        ] );
+
+        $result = [];
+        foreach ( $posts as $post ) {
+            $result[] = [
+                'id'          => $post->ID,
+                'title'       => $post->post_title ?: '(Kein Titel)',
+                'type'        => $post->post_type,
+                'url'         => get_permalink( $post->ID ),
+                'date'        => $post->post_date,
+                'word_count'  => str_word_count( wp_strip_all_tags( $post->post_content ) ),
+                'analyzed'    => in_array( $post->ID, $analyzed_ids, true ),
+            ];
+        }
+
+        wp_send_json_success( [ 'posts' => $result ] );
+    }
+
+    /**
+     * AJAX: Einen einzelnen Text (Post/Seite/Manuell) per KI analysieren und speichern.
+     */
+    public function ajax_analyze_memory_item(): void {
+        check_ajax_referer( 'aica_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( [], 403 );
+        }
+
+        $source_type = sanitize_key( wp_unslash( $_POST['source_type'] ?? 'manual' ) );
+        $source_id   = absint( $_POST['source_id'] ?? 0 );
+        $custom_text = sanitize_textarea_field( wp_unslash( $_POST['custom_text'] ?? '' ) );
+
+        // Text und Metadaten ermitteln
+        $text         = '';
+        $source_title = '';
+        $source_url   = '';
+        $source_date  = null;
+        $word_count   = 0;
+
+        if ( in_array( $source_type, [ 'post', 'page' ], true ) && $source_id ) {
+            $post = get_post( $source_id );
+            if ( ! $post ) {
+                wp_send_json_error( [ 'message' => 'Beitrag nicht gefunden.' ] );
+            }
+            $text         = wp_strip_all_tags( $post->post_content );
+            $source_title = $post->post_title;
+            $source_url   = get_permalink( $post->ID );
+            $source_date  = $post->post_date;
+            $word_count   = str_word_count( $text );
+        } elseif ( $source_type === 'manual' && ! empty( $custom_text ) ) {
+            $text         = $custom_text;
+            $source_title = 'Manueller Text (' . gmdate( 'Y-m-d H:i' ) . ')';
+            $source_date  = gmdate( 'Y-m-d H:i:s' );
+            $word_count   = str_word_count( $text );
+        } else {
+            wp_send_json_error( [ 'message' => 'Kein Text zum Analysieren.' ] );
+        }
+
+        if ( strlen( $text ) < 50 ) {
+            wp_send_json_error( [ 'message' => 'Text zu kurz für eine sinnvolle Analyse (min. 50 Zeichen).' ] );
+        }
+
+        // Text auf max. ~12.000 Zeichen kürzen (API-Limit schonen)
+        $text_excerpt = mb_substr( $text, 0, 12000 );
+
+        $api_key = Settings::get_api_key();
+        if ( ! $api_key ) {
+            wp_send_json_error( [ 'message' => 'Kein API-Schlüssel konfiguriert.' ] );
+        }
+
+        $model  = Settings::get_memory_model();
+        $client = new API_Client( $api_key );
+
+        $system_prompt = 'Du bist ein Content-Analyst. Analysiere den folgenden Text und erstelle ein strukturiertes Profil. '
+            . 'Antworte AUSSCHLIESSLICH mit einem gültigen JSON-Objekt ohne Markdown-Code-Blöcke und ohne zusätzliche Erklärungen.';
+
+        $user_prompt = "Analysiere diesen Text und gib ein JSON-Objekt mit folgenden Feldern zurück:\n\n"
+            . "{\n"
+            . "  \"summary\": \"Präzise Zusammenfassung in 2-4 Sätzen\",\n"
+            . "  \"keywords\": [\"keyword1\", \"keyword2\"],\n"
+            . "  \"writing_style\": \"Beschreibung des Schreibstils\",\n"
+            . "  \"tone\": \"Ton des Textes (z.B. professionell, locker, journalistisch, motivierend)\",\n"
+            . "  \"target_audience\": \"Beschreibung der Zielgruppe\",\n"
+            . "  \"content_type\": \"Art des Inhalts (z.B. Blog-Artikel, Tutorial, Ratgeber, Landingpage, News)\",\n"
+            . "  \"topics\": [\"Hauptthema1\", \"Hauptthema2\"],\n"
+            . "  \"unique_features\": \"Besonderheiten, Alleinstellungsmerkmale, wiederkehrende Muster und Formulierungen\",\n"
+            . "  \"language\": \"de\",\n"
+            . "  \"sentiment\": \"positiv|neutral|negativ\",\n"
+            . "  \"reading_level\": \"einfach|mittel|anspruchsvoll\",\n"
+            . "  \"recurring_phrases\": [\"Phrase1\", \"Phrase2\"],\n"
+            . "  \"cta_style\": \"direkt|subtil|keiner\",\n"
+            . "  \"structure\": \"Kurze Beschreibung der Textstruktur (z.B. viele Listen, kurze Absätze, Frage-Antwort-Format)\"\n"
+            . "}\n\n"
+            . "TEXT:\n" . $text_excerpt;
+
+        $response = $client->send_message(
+            $system_prompt,
+            [ [ 'role' => 'user', 'content' => $user_prompt ] ],
+            [
+                'model'      => $model,
+                'max_tokens' => 2000,
+                'temperature' => 0.2,
+            ]
+        );
+
+        if ( is_wp_error( $response ) ) {
+            wp_send_json_error( [ 'message' => 'KI-Fehler: ' . $response->get_error_message() ] );
+        }
+
+        $raw_text    = $response['text'] ?? '';
+        $tokens_used = (int) ( ( $response['usage']['input_tokens'] ?? 0 ) + ( $response['usage']['output_tokens'] ?? 0 ) );
+
+        // JSON aus Antwort extrahieren (auch wenn KI doch Markdown nutzt)
+        $json_text = $raw_text;
+        if ( preg_match( '/```(?:json)?\s*([\s\S]+?)\s*```/i', $raw_text, $m ) ) {
+            $json_text = $m[1];
+        }
+
+        $data_parsed = json_decode( $json_text, true );
+
+        global $wpdb;
+        $memory_table = $wpdb->prefix . Installer::TABLE_MEMORY;
+
+        if ( ! is_array( $data_parsed ) ) {
+            // Speichere Fehler-Eintrag
+            $wpdb->insert( $memory_table, [
+                'source_type'  => $source_type,
+                'source_id'    => $source_id ?: null,
+                'source_title' => $source_title,
+                'source_url'   => $source_url ?: null,
+                'source_date'  => $source_date,
+                'word_count'   => $word_count,
+                'tokens_used'  => $tokens_used,
+                'error_message' => 'KI-Antwort konnte nicht als JSON geparst werden: ' . mb_substr( $raw_text, 0, 500 ),
+                'analyzed_at'  => current_time( 'mysql' ),
+            ] );
+            wp_send_json_error( [ 'message' => 'Antwort konnte nicht verarbeitet werden.' ] );
+        }
+
+        // Sanitieren
+        $s = function( $v ) { return is_string( $v ) ? sanitize_textarea_field( $v ) : ''; };
+        $json_arr = function( $v ) { return wp_json_encode( is_array( $v ) ? $v : [] ); };
+
+        $row = [
+            'source_type'       => $source_type,
+            'source_id'         => $source_id ?: null,
+            'source_title'      => $source_title,
+            'source_url'        => $source_url ?: null,
+            'source_date'       => $source_date,
+            'summary'           => $s( $data_parsed['summary'] ?? '' ),
+            'keywords'          => $json_arr( $data_parsed['keywords'] ?? [] ),
+            'writing_style'     => $s( $data_parsed['writing_style'] ?? '' ),
+            'tone'              => $s( $data_parsed['tone'] ?? '' ),
+            'target_audience'   => $s( $data_parsed['target_audience'] ?? '' ),
+            'content_type'      => $s( $data_parsed['content_type'] ?? '' ),
+            'topics'            => $json_arr( $data_parsed['topics'] ?? [] ),
+            'unique_features'   => $s( $data_parsed['unique_features'] ?? '' ),
+            'language'          => $s( $data_parsed['language'] ?? '' ),
+            'sentiment'         => $s( $data_parsed['sentiment'] ?? '' ),
+            'reading_level'     => $s( $data_parsed['reading_level'] ?? '' ),
+            'recurring_phrases' => $json_arr( $data_parsed['recurring_phrases'] ?? [] ),
+            'cta_style'         => $s( $data_parsed['cta_style'] ?? '' ),
+            'structure'         => $s( $data_parsed['structure'] ?? '' ),
+            'word_count'        => $word_count,
+            'tokens_used'       => $tokens_used,
+            'analyzed_at'       => current_time( 'mysql' ),
+        ];
+
+        $wpdb->insert( $memory_table, $row );
+        $entry_id = (int) $wpdb->insert_id;
+
+        wp_send_json_success( [
+            'entry_id'    => $entry_id,
+            'source_title' => $source_title,
+            'summary'      => $row['summary'],
+            'keywords'     => $data_parsed['keywords'] ?? [],
+            'writing_style' => $row['writing_style'],
+            'tone'          => $row['tone'],
+            'target_audience' => $row['target_audience'],
+            'content_type'  => $row['content_type'],
+            'topics'        => $data_parsed['topics'] ?? [],
+            'unique_features' => $row['unique_features'],
+            'language'      => $row['language'],
+            'sentiment'     => $row['sentiment'],
+            'reading_level' => $row['reading_level'],
+            'recurring_phrases' => $data_parsed['recurring_phrases'] ?? [],
+            'cta_style'     => $row['cta_style'],
+            'structure'     => $row['structure'],
+            'word_count'    => $word_count,
+            'tokens_used'   => $tokens_used,
+            'source_url'    => $source_url,
+        ] );
+    }
+
+    /**
+     * AJAX: Alle gespeicherten Memory-Einträge laden.
+     */
+    public function ajax_get_memory_entries(): void {
+        check_ajax_referer( 'aica_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( [], 403 );
+        }
+
+        global $wpdb;
+        $table = $wpdb->prefix . Installer::TABLE_MEMORY;
+
+        $rows = $wpdb->get_results(
+            "SELECT id, source_type, source_id, source_title, source_url, source_date,
+                    summary, keywords, topics, tone, language, sentiment, reading_level,
+                    content_type, word_count, tokens_used, error_message, analyzed_at
+             FROM {$table}
+             ORDER BY analyzed_at DESC
+             LIMIT 200"
+        );
+
+        $entries = array_map( function ( $row ) {
+            return [
+                'id'           => (int) $row->id,
+                'source_type'  => $row->source_type,
+                'source_id'    => (int) $row->source_id,
+                'source_title' => $row->source_title,
+                'source_url'   => $row->source_url,
+                'source_date'  => $row->source_date,
+                'summary'      => $row->summary,
+                'keywords'     => json_decode( $row->keywords ?? '[]', true ) ?: [],
+                'topics'       => json_decode( $row->topics ?? '[]', true ) ?: [],
+                'tone'         => $row->tone,
+                'language'     => $row->language,
+                'sentiment'    => $row->sentiment,
+                'reading_level' => $row->reading_level,
+                'content_type' => $row->content_type,
+                'word_count'   => (int) $row->word_count,
+                'tokens_used'  => (int) $row->tokens_used,
+                'error_message' => $row->error_message,
+                'analyzed_at'  => $row->analyzed_at,
+            ];
+        }, $rows ?: [] );
+
+        wp_send_json_success( [ 'entries' => $entries ] );
+    }
+
+    /**
+     * AJAX: Memory-Eintrag löschen.
+     */
+    public function ajax_delete_memory_entry(): void {
+        check_ajax_referer( 'aica_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( [], 403 );
+        }
+
+        $entry_id = absint( $_POST['entry_id'] ?? 0 );
+        if ( ! $entry_id ) {
+            wp_send_json_error( [ 'message' => 'Keine Eintrags-ID.' ] );
+        }
+
+        global $wpdb;
+        $wpdb->delete( $wpdb->prefix . Installer::TABLE_MEMORY, [ 'id' => $entry_id ], [ '%d' ] );
+
+        wp_send_json_success();
+    }
+
+    /**
+     * AJAX: Memory-Einstellungen (aktiviert/deaktiviert + Modell) per Toggle speichern.
+     */
+    public function ajax_save_memory_settings(): void {
+        check_ajax_referer( 'aica_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( [], 403 );
+        }
+
+        $enabled = isset( $_POST['enabled'] ) ? (int) $_POST['enabled'] : null;
+        $model   = sanitize_key( wp_unslash( $_POST['model'] ?? '' ) );
+
+        if ( $enabled !== null ) {
+            Settings::set( 'aica_memory_enabled', $enabled ? 1 : 0 );
+        }
+
+        if ( $model && array_key_exists( $model, Settings::get_available_models() ) ) {
+            Settings::set( 'aica_memory_model', $model );
+        }
+
+        wp_send_json_success( [
+            'enabled' => Settings::is_memory_enabled(),
+            'model'   => Settings::get_memory_model(),
         ] );
     }
 }

@@ -14,7 +14,8 @@ class Installer {
     const TABLE_LOGS      = 'aica_logs';
     const TABLE_PIPELINES = 'aica_pipelines';
     const TABLE_AGENTS    = 'aica_agents';
-    const DB_VERSION      = '1.2.1';
+    const TABLE_MEMORY    = 'aica_memory';
+    const DB_VERSION      = '1.3.0';
 
     /**
      * Prüft ob das DB-Schema aktuell ist und führt ggf. ein Upgrade durch.
@@ -196,6 +197,38 @@ class Installer {
             KEY idx_agent (agent)
         ) {$charset_collate};" );
 
+        // Tabelle: Website-Gedächtnis (Memory)
+        $table_memory = $wpdb->prefix . self::TABLE_MEMORY;
+        dbDelta( "CREATE TABLE {$table_memory} (
+            id                BIGINT UNSIGNED  NOT NULL AUTO_INCREMENT,
+            source_type       VARCHAR(20)      NOT NULL DEFAULT 'post',
+            source_id         BIGINT UNSIGNED  DEFAULT NULL,
+            source_url        VARCHAR(2048)    DEFAULT NULL,
+            source_title      VARCHAR(500)     DEFAULT NULL,
+            source_date       DATETIME         DEFAULT NULL,
+            summary           TEXT             DEFAULT NULL,
+            keywords          LONGTEXT         DEFAULT NULL,
+            writing_style     TEXT             DEFAULT NULL,
+            tone              VARCHAR(255)     DEFAULT NULL,
+            target_audience   TEXT             DEFAULT NULL,
+            content_type      VARCHAR(100)     DEFAULT NULL,
+            topics            LONGTEXT         DEFAULT NULL,
+            unique_features   TEXT             DEFAULT NULL,
+            language          VARCHAR(10)      DEFAULT NULL,
+            sentiment         VARCHAR(20)      DEFAULT NULL,
+            reading_level     VARCHAR(20)      DEFAULT NULL,
+            recurring_phrases LONGTEXT         DEFAULT NULL,
+            cta_style         VARCHAR(50)      DEFAULT NULL,
+            structure         VARCHAR(500)     DEFAULT NULL,
+            word_count        INT UNSIGNED     DEFAULT NULL,
+            tokens_used       INT UNSIGNED     DEFAULT NULL,
+            error_message     TEXT             DEFAULT NULL,
+            analyzed_at       DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY idx_source_type (source_type),
+            KEY idx_source_id   (source_id)
+        ) {$charset_collate};" );
+
         update_option( 'aica_db_version', self::DB_VERSION );
         update_option( 'aica_plugin_version', AICA_VERSION );
 
@@ -240,6 +273,8 @@ class Installer {
             'aica_default_status'  => 'draft',
             'aica_voice_profiles'  => self::get_default_voice_profiles(),
             'aica_agent_settings'  => self::get_default_agent_settings(),
+            'aica_memory_enabled'  => 1,
+            'aica_memory_model'    => 'claude-sonnet-4-6',
         ];
 
         foreach ( $defaults as $key => $value ) {
